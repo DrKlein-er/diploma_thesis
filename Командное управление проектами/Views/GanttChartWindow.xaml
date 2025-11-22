@@ -1,0 +1,319 @@
+﻿<Window x:Class="Командное_управление_проектами.Views.GanttChartWindow"
+        Icon="pack://application:,,,/Resources/checklist.ico"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Диаграмма Ганта" Height="700" Width="1200"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource BackgroundBrush}">
+
+    <Window.Resources>
+        <!-- Стиль для заголовка окна -->
+        <Style x:Key="TitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="24"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,0,15"/>
+        </Style>
+
+        <!-- Стиль для заголовков колонок -->
+        <Style x:Key="HeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- Стиль для ячеек названий задач -->
+        <Style x:Key="TaskNameStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="TextWrapping" Value="NoWrap"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        </Style>
+
+        <!-- Стиль для меток дат -->
+        <Style x:Key="DateLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- Стиль для вспомогательного текста -->
+        <Style x:Key="SubTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Foreground" Value="{DynamicResource DisabledForegroundBrush}"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- Стиль для текста на полосах диаграммы -->
+        <Style x:Key="BarTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="5,0"/>
+        </Style>
+
+        <!-- Стиль для кнопки экспорта -->
+        <Style x:Key="ExportButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="5" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#005A9E"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#004578"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border Background="{DynamicResource BackgroundBrush}" 
+            CornerRadius="10" 
+            Padding="25" 
+            Margin="15"
+            BorderBrush="{DynamicResource BorderBrush}" 
+            BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Заголовок окна -->
+            <TextBlock x:Name="ChartTitle" 
+                       Grid.Row="0"
+                       Text="Диаграмма Ганта" 
+                       Style="{StaticResource TitleStyle}"/>
+
+            <!-- Панель управления и легенда -->
+            <Grid Grid.Row="1" Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Кнопка экспорта -->
+                <Button Grid.Column="0"
+                        Content="📥 Экспортировать" 
+                        Click="Export_Click"
+                        Style="{StaticResource ExportButtonStyle}"/>
+
+                <!-- Легенда -->
+                <StackPanel Grid.Column="2" 
+                            Orientation="Horizontal" 
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center">
+                    <!-- Завершена -->
+                    <Border Width="18" Height="13" 
+                            Background="#4CAF50" 
+                            CornerRadius="3"
+                            Margin="0,0,5,0"/>
+                    <TextBlock Text="Завершена" 
+                               FontSize="11"
+                               Foreground="{DynamicResource ForegroundBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,15,0"/>
+
+                    <!-- В процессе -->
+                    <Border Width="18" Height="13" 
+                            Background="#FF9800" 
+                            CornerRadius="3"
+                            Margin="0,0,5,0"/>
+                    <TextBlock Text="В процессе" 
+                               FontSize="11"
+                               Foreground="{DynamicResource ForegroundBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,15,0"/>
+
+                    <!-- Открыта -->
+                    <Border Width="18" Height="13" 
+                            Background="#9E9E9E" 
+                            CornerRadius="3"
+                            Margin="0,0,5,0"/>
+                    <TextBlock Text="Открыта" 
+                               FontSize="11"
+                               Foreground="{DynamicResource ForegroundBrush}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Статистика -->
+            <Border Grid.Row="2" 
+                    Background="{DynamicResource TextBoxBackgroundBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="5"
+                    Padding="12,8"
+                    Margin="0,0,0,15">
+                <TextBlock x:Name="StatsText"
+                           FontSize="12"
+                           Foreground="{DynamicResource ForegroundBrush}"
+                           HorizontalAlignment="Center"
+                           Text="Загрузка статистики..."/>
+            </Border>
+
+            <!-- Основная область диаграммы -->
+            <Grid Grid.Row="3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="280"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Левая панель: названия задач -->
+                <Grid Grid.Column="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="50"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Заголовок колонки названий -->
+                    <Border Grid.Row="0" 
+                            BorderBrush="{DynamicResource BorderBrush}" 
+                            BorderThickness="0,0,1,1" 
+                            Background="{DynamicResource TextBoxBackgroundBrush}">
+                        <TextBlock Text="Название задачи" 
+                                   Style="{StaticResource HeaderStyle}"/>
+                    </Border>
+
+                    <!-- Список названий задач -->
+                    <ScrollViewer Grid.Row="1" 
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl x:Name="TaskNamesItemsControl">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{DynamicResource BorderBrush}" 
+                                            BorderThickness="0,0,1,1" 
+                                            Background="{DynamicResource BackgroundBrush}"
+                                            Height="35">
+                                        <TextBlock Text="{Binding Name}" 
+                                                   Style="{StaticResource TaskNameStyle}"
+                                                   ToolTip="{Binding Name}"/>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+
+                <!-- Правая панель: временная шкала и полосы диаграммы -->
+                <ScrollViewer Grid.Column="1" 
+                              HorizontalScrollBarVisibility="Auto" 
+                              VerticalScrollBarVisibility="Auto">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="50"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Временная шкала (заголовок) -->
+                        <Border Grid.Row="0" 
+                                BorderBrush="{DynamicResource BorderBrush}" 
+                                BorderThickness="0,0,0,1"
+                                Background="{DynamicResource TextBoxBackgroundBrush}">
+                            <ItemsControl x:Name="DateScaleItemsControl">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="{DynamicResource BorderBrush}" 
+                                                BorderThickness="0,0,1,0" 
+                                                Width="40">
+                                            <StackPanel HorizontalAlignment="Center" 
+                                                        VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Day}" 
+                                                           Style="{StaticResource DateLabelStyle}"
+                                                           FontWeight="Bold"/>
+                                                <TextBlock Text="{Binding Month}" 
+                                                           Style="{StaticResource SubTextStyle}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Border>
+
+                        <!-- Область диаграммы с полосами -->
+                        <Grid Grid.Row="1" x:Name="ChartArea">
+                            <!-- Фоновые горизонтальные линии -->
+                            <ItemsControl x:Name="TaskGridLinesItemsControl">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Vertical"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="{DynamicResource BorderBrush}" 
+                                                BorderThickness="0,0,0,1" 
+                                                Background="{DynamicResource BackgroundBrush}"
+                                                Height="35"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Canvas для полос диаграммы -->
+                            <Canvas x:Name="GanttCanvas">
+                                <ItemsControl x:Name="GanttBarsItemsControl">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <Canvas/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Height="22" 
+                                                    Background="{Binding BarColor}" 
+                                                    Canvas.Left="{Binding BarLeft}"
+                                                    Canvas.Top="{Binding BarTop}"
+                                                    Width="{Binding BarWidth}"
+                                                    CornerRadius="4"
+                                                    ToolTip="{Binding ToolTipText}">
+                                                <TextBlock Text="{Binding Duration}" 
+                                                           Style="{StaticResource BarTextStyle}"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Canvas>
+                        </Grid>
+                    </Grid>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

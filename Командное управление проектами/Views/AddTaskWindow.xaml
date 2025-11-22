@@ -1,0 +1,202 @@
+﻿<Window x:Class="Командное_управление_проектами.Views.AddTaskWindow"
+        Icon="pack://application:,,,/Resources/checklist.ico"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Командное_управление_проектами.Views"
+        mc:Ignorable="d"
+        Title="Добавить задачу" Height="870" Width="500"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource BackgroundBrush}">
+
+    <Window.Resources>
+        <!-- Стиль для заголовков полей -->
+        <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,5"/>
+        </Style>
+
+        <!-- Стиль для текстовых полей -->
+        <Style x:Key="InputTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Background" Value="{DynamicResource TextBoxBackgroundBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Margin" Value="0,0,0,5"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <!-- Стиль для многострочного текста -->
+        <Style x:Key="MultilineTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Height" Value="80"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Background" Value="{DynamicResource TextBoxBackgroundBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Margin" Value="0,0,0,5"/>
+            <Setter Property="AcceptsReturn" Value="True"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="VerticalContentAlignment" Value="Top"/>
+        </Style>
+
+        <!-- Стиль для DatePicker -->
+        <Style TargetType="DatePicker">
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Margin" Value="0,0,0,15"/>
+            <Setter Property="Background" Value="{DynamicResource TextBoxBackgroundBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+
+        <!-- Стиль для кнопки -->
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="25,10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="6" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#005A9E"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#004578"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border Background="{DynamicResource BackgroundBrush}" 
+            CornerRadius="10" 
+            Padding="35" 
+            Margin="20"
+            BorderBrush="{DynamicResource BorderBrush}" 
+            BorderThickness="1">
+        <StackPanel>
+            <!-- Заголовок окна -->
+            <TextBlock Text="Добавить задачу" 
+                       FontSize="26" 
+                       FontWeight="Bold"
+                       Foreground="{DynamicResource ForegroundBrush}" 
+                       HorizontalAlignment="Center" 
+                       Margin="0,0,0,15"/>
+
+            <!-- Поле "Название" -->
+            <TextBlock Text="Название:" 
+                       Style="{StaticResource FieldLabelStyle}"/>
+            <TextBox x:Name="TitleBox" 
+                     Style="{StaticResource InputTextBoxStyle}"
+                     ToolTip="Введите название задачи"
+                     MaxLength="200"/>
+
+            <!-- Поле "Описание" -->
+            <TextBlock Text="Описание:" 
+                       Style="{StaticResource FieldLabelStyle}"/>
+            <TextBox x:Name="DescBox" 
+                     Style="{StaticResource MultilineTextBoxStyle}"
+                     ToolTip="Введите описание задачи"
+                     MaxLength="1000"/>
+
+            <!-- Поле "Приоритет" -->
+            <TextBlock Text="Приоритет:" 
+                       Style="{StaticResource FieldLabelStyle}"/>
+            <ComboBox x:Name="PriorityBox" 
+                      Height="35"
+                      Margin="0,0,0,15"
+                      ToolTip="Выберите приоритет задачи">
+                <ComboBoxItem Content="Высокий"/>
+                <ComboBoxItem Content="Средний" IsSelected="True"/>
+                <ComboBoxItem Content="Низкий"/>
+            </ComboBox>
+
+            <!-- Поле "Статус" -->
+            <TextBlock Text="Статус:" 
+                       Style="{StaticResource FieldLabelStyle}"/>
+            <ComboBox x:Name="StatusBox" 
+                      Height="35"
+                      Margin="0,0,0,15"
+                      ToolTip="Выберите статус задачи">
+                <ComboBoxItem Content="Открыта" IsSelected="True"/>
+                <ComboBoxItem Content="В процессе"/>
+                <ComboBoxItem Content="Завершена"/>
+            </ComboBox>
+
+            <!-- Поле "Дата начала" -->
+            <TextBlock Text="Дата начала:" 
+                       Style="{StaticResource FieldLabelStyle}"/>
+            <DatePicker x:Name="StartDatePicker" 
+                        ToolTip="Выберите дату начала задачи"/>
+
+            <!-- Поле "Дата завершения" -->
+            <TextBlock Text="Дата завершения:" 
+                       Style="{StaticResource FieldLabelStyle}"/>
+            <DatePicker x:Name="EndDatePicker" 
+                        ToolTip="Выберите дату завершения задачи"/>
+
+            <!-- Поле "Проект" -->
+            <TextBlock Text="Проект:" 
+                       Style="{StaticResource FieldLabelStyle}"/>
+            <ComboBox x:Name="ProjectComboBox" 
+                      Height="35"
+                      Margin="0,0,0,15"
+                      SelectedValuePath="ID_проекта"
+                      ToolTip="Выберите проект">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Название_проекта}" 
+                                   Foreground="{DynamicResource ForegroundBrush}"/>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+
+            <!-- Поле "Ответственный" -->
+            <TextBlock Text="Ответственный:" 
+                       Style="{StaticResource FieldLabelStyle}"/>
+            <ComboBox x:Name="EmployeeComboBox" 
+                      Height="35"
+                      Margin="0,0,0,20"
+                      SelectedValuePath="ID_сотрудника"
+                      ToolTip="Выберите ответственного сотрудника">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Имя_сотрудника}" 
+                                   Foreground="{DynamicResource ForegroundBrush}"/>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+
+            <!-- Кнопка добавления -->
+            <Button Content="Добавить задачу" 
+                    Click="Save_Click" 
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    Width="180"
+                    Height="42"
+                    HorizontalAlignment="Center"
+                    Margin="0,5,0,0"/>
+        </StackPanel>
+    </Border>
+</Window>
