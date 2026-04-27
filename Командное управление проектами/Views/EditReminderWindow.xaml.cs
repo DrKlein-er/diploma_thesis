@@ -6,9 +6,15 @@ using Командное_управление_проектами.Models;
 
 namespace Командное_управление_проектами.Views
 {
+
+    /// Окно редактирования напоминания
+
     public partial class EditReminderWindow : Window
     {
         private ReminderModel _reminder;
+
+
+        /// Конструктор окна редактирования напоминания
 
         public EditReminderWindow(ReminderModel reminder)
         {
@@ -25,7 +31,9 @@ namespace Командное_управление_проектами.Views
             TextBoxReminder.Focus();
         }
 
-        // Применение текущей темы приложения к окну
+
+        /// Применение текущей темы приложения к окну
+
         private void ApplyTheme()
         {
             var theme = ThemeManager.GetCurrentTheme();
@@ -41,7 +49,8 @@ namespace Командное_управление_проектами.Views
             this.Resources.MergedDictionaries.Add(themeDict);
         }
 
-        // Загрузка списка задач в ComboBox
+
+        /// Загрузка списка задач в ComboBox
         private void LoadTasks()
         {
             try
@@ -58,7 +67,9 @@ namespace Командное_управление_проектами.Views
             }
         }
 
-        // Загрузка данных напоминания в поля формы
+
+        /// Загрузка данных напоминания в поля формы
+
         private void LoadReminderData()
         {
             TextBoxReminder.Text = _reminder.Текст_напоминания;
@@ -66,7 +77,7 @@ namespace Командное_управление_проектами.Views
             TaskComboBox.SelectedValue = _reminder.ID_задачи;
         }
 
-        // Обработчик нажатия кнопки "Сохранить"
+        /// Обработчик нажатия кнопки "Сохранить"
         private void Save_Click(object sender, RoutedEventArgs e)
         {
             // Получаем данные из полей
@@ -129,14 +140,13 @@ namespace Командное_управление_проектами.Views
                     MessageBoxImage.Error);
             }
         }
-
-        // Обработка горячих клавиш
+        /// Обработка горячих клавиш
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
 
-            // Enter - сохранить изменения (если фокус не на многострочном текстовом поле)
-            if (e.Key == Key.Enter && !TextBoxReminder.IsFocused)
+            // Ctrl+Enter - сохранить изменения
+            if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Control)
             {
                 Save_Click(this, new RoutedEventArgs());
             }

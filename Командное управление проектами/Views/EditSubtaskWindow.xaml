@@ -6,7 +6,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Командное_управление_проектами.Views"
         mc:Ignorable="d"
-        Title="Редактировать подзадачу" Height="600" Width="500"
+        Title="Редактировать подзадачу" Height="670" Width="500"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource BackgroundBrush}">
     

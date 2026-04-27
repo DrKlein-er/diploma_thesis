@@ -15,9 +15,7 @@ namespace Командное_управление_проектами.Helpers
         // Событие для уведомления об изменении темы
         public static event Action ThemeChanged;
 
-        /// <summary>
         /// Применить тему к приложению
-        /// </summary>
         public static void ApplyTheme(string themeName)
         {
             try
@@ -48,9 +46,7 @@ namespace Командное_управление_проектами.Helpers
                 System.Diagnostics.Debug.WriteLine($"Ошибка применения темы: {ex.Message}");
             }
         }
-        /// <summary>
         /// Получить текущую тему
-        /// </summary>
         public static string GetCurrentTheme()
         {
             if (Application.Current.Resources.MergedDictionaries.Count > 0)

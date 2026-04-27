@@ -14,85 +14,95 @@ using Командное_управление_проектами.ViewModels;
 
 namespace Командное_управление_проектами.Views
 {
+    /// <summary>
+    /// Окно отображения диаграммы Ганта для визуализации задач и подзадач проекта
+    /// </summary>
     public partial class GanttChartWindow : Window
     {
-        // Константа: ширина одного дня в пикселях
+        // Константа: ширина одного дня в пикселях на диаграмме
         private const double DayWidth = 40;
 
-        // Сохраняем ссылки для использования в экспорте
+        // Сохраняем ссылки для использования в экспорте и построении диаграммы
         private TaskModel _mainTask;
         private List<GanttItem> _ganttItems;
         private DateTime _overallStartDate;
         private DateTime _overallEndDate;
 
-        // Конструктор окна, принимает основную задачу для построения диаграммы
+        /// <summary>
+        /// Конструктор окна диаграммы Ганта
+        /// </summary>
+        /// <param name="mainTask">Основная задача для построения диаграммы</param>
         public GanttChartWindow(TaskModel mainTask)
         {
             InitializeComponent();
             _mainTask = mainTask;
 
-            // Применяем текущую тему приложения
-            ApplyTheme();
-
-            // Устанавливаем заголовок с названием задачи
+            // Устанавливаем заголовок с названием задачи и проекта
             ChartTitle.Text = $"Диаграмма Ганта: {mainTask.Название_задачи}";
 
             // Строим диаграмму Ганта
             BuildGanttChart(mainTask);
         }
 
-        // Применение текущей темы приложения к окну
-        private void ApplyTheme()
-        {
-            var theme = ThemeManager.GetCurrentTheme();
-            var themeUri = theme == "Тёмная"
-                ? "Themes/DarkTheme.xaml"
-                : "Themes/LightTheme.xaml";
-
-            var themeDict = new ResourceDictionary
-            {
-                Source = new Uri(themeUri, UriKind.Relative)
-            };
-
-            this.Resources.MergedDictionaries.Add(themeDict);
-        }
-
-        // Построение диаграммы Ганта на основе основной задачи и её подзадач
+        /// <summary>
+        /// Построение диаграммы Ганта на основе основной задачи и её подзадач
+        /// </summary>
+        /// <param name="mainTask">Основная задача</param>
         private void BuildGanttChart(TaskModel mainTask)
         {
             _ganttItems = new List<GanttItem>();
 
-            // Собираем основную задачу, если у неё есть даты начала и окончания
+            System.Diagnostics.Debug.WriteLine("=== НАЧАЛО ПОСТРОЕНИЯ ДИАГРАММЫ ===");
+            System.Diagnostics.Debug.WriteLine($"Основная задача: {mainTask.Название_задачи}");
+            System.Diagnostics.Debug.WriteLine($"Даты: {mainTask.Дата_начала} - {mainTask.Дата_завершения}");
+            System.Diagnostics.Debug.WriteLine($"Подзадач в задаче: {mainTask.Subtasks?.Count ?? 0}");
+
+            // 1. Добавляем основную задачу на первую строку
             if (mainTask.Дата_начала.HasValue && mainTask.Дата_завершения.HasValue)
             {
-                _ganttItems.Add(new GanttItem
+                var mainItem = new GanttItem
                 {
                     Name = mainTask.Название_задачи,
                     StartDate = mainTask.Дата_начала.Value,
                     EndDate = mainTask.Дата_завершения.Value,
                     BarColor = GetColorByStatus(mainTask.Статус, true),
                     Status = mainTask.Статус
-                });
+                };
+                _ganttItems.Add(mainItem);
+                System.Diagnostics.Debug.WriteLine($"✓ Добавлена основная задача");
             }
 
-            // Собираем все подзадачи, у которых есть даты начала и окончания
-            if (mainTask.Subtasks != null)
+            // 2. Добавляем подзадачи на отдельные строки
+            if (mainTask.Subtasks != null && mainTask.Subtasks.Count > 0)
             {
+                System.Diagnostics.Debug.WriteLine($"Обработка {mainTask.Subtasks.Count} подзадач:");
                 foreach (var subtask in mainTask.Subtasks)
                 {
+                    System.Diagnostics.Debug.WriteLine($"  - {subtask.Название_подзадачи}");
+                    System.Diagnostics.Debug.WriteLine($"    Даты: {subtask.Дата_начала} - {subtask.Дата_завершения}");
+
+                    // Добавляем только подзадачи с корректными датами
                     if (subtask.Дата_начала.HasValue && subtask.Дата_завершения.HasValue)
                     {
-                        _ganttItems.Add(new GanttItem
+                        var subtaskItem = new GanttItem
                         {
                             Name = "  → " + subtask.Название_подзадачи,
                             StartDate = subtask.Дата_начала.Value,
                             EndDate = subtask.Дата_завершения.Value,
                             BarColor = GetColorByStatus(subtask.Статус, false),
                             Status = subtask.Статус
-                        });
+                        };
+                        _ganttItems.Add(subtaskItem);
+                        System.Diagnostics.Debug.WriteLine($"    ✓ Добавлена");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"    ✗ Пропущена (нет дат)");
                     }
                 }
             }
+
+            System.Diagnostics.Debug.WriteLine($"Всего элементов в _ganttItems: {_ganttItems.Count}");
 
             // Валидация: если нет данных для построения диаграммы
             if (!_ganttItems.Any())
@@ -109,6 +119,8 @@ namespace Командное_управление_проектами.Views
             _overallStartDate = _ganttItems.Min(i => i.StartDate).Date;
             _overallEndDate = _ganttItems.Max(i => i.EndDate).Date;
 
+            System.Diagnostics.Debug.WriteLine($"Временной диапазон: {_overallStartDate:dd.MM.yyyy} - {_overallEndDate:dd.MM.yyyy}");
+
             // Генерируем шкалу дат (верхняя панель с датами)
             var dateMarkers = new List<GanttDateMarker>();
             for (DateTime date = _overallStartDate; date <= _overallEndDate; date = date.AddDays(1))
@@ -121,10 +133,12 @@ namespace Командное_управление_проектами.Views
             }
             DateScaleItemsControl.ItemsSource = dateMarkers;
 
-            // Рассчитываем геометрию полос для каждой задачи/подзадачи
-            int itemIndex = 0;
-            foreach (var item in _ganttItems)
+            // 3. Рассчитываем геометрию полос - КРИТИЧЕСКИ ВАЖНО
+            System.Diagnostics.Debug.WriteLine("=== РАСЧЕТ ПОЗИЦИЙ ПОЛОС ===");
+            for (int i = 0; i < _ganttItems.Count; i++)
             {
+                var item = _ganttItems[i];
+
                 // Длительность задачи в днях
                 var duration = (item.EndDate.Date - item.StartDate.Date).TotalDays + 1;
 
@@ -134,7 +148,12 @@ namespace Командное_управление_проектами.Views
                 // Рассчитываем ширину полосы и её позицию
                 item.BarWidth = duration * DayWidth;
                 item.BarLeft = offsetDays * DayWidth;
-                item.BarTop = (itemIndex * 35) + 6; // 35 - высота строки, 6 - отступ сверху для центрирования
+
+                // КРИТИЧНО: Каждая задача должна быть на своей строке
+                item.BarTop = (i * 35) + 6;
+
+                System.Diagnostics.Debug.WriteLine($"[{i}] {item.Name}");
+                System.Diagnostics.Debug.WriteLine($"    BarTop={item.BarTop}, BarLeft={item.BarLeft}, BarWidth={item.BarWidth}");
 
                 // Форматируем длительность для отображения на полосе
                 item.Duration = duration == 1 ? "1 день" : $"{duration} дн.";
@@ -145,23 +164,31 @@ namespace Командное_управление_проектами.Views
                                   $"Начало: {item.StartDate:dd.MM.yyyy}\n" +
                                   $"Окончание: {item.EndDate:dd.MM.yyyy}\n" +
                                   $"Длительность: {duration} дн.";
-
-                itemIndex++;
             }
 
+            System.Diagnostics.Debug.WriteLine($"=== ПРИВЯЗКА К UI ===");
             // Отображаем данные в соответствующих контролах
             TaskNamesItemsControl.ItemsSource = _ganttItems;
-            TaskGridLinesItemsControl.ItemsSource = _ganttItems; // Для отрисовки горизонтальных линий
+            System.Diagnostics.Debug.WriteLine($"TaskNamesItemsControl.ItemsSource установлен ({_ganttItems.Count} элементов)");
+
+            TaskGridLinesItemsControl.ItemsSource = _ganttItems;
+            System.Diagnostics.Debug.WriteLine($"TaskGridLinesItemsControl.ItemsSource установлен ({_ganttItems.Count} элементов)");
+
             GanttBarsItemsControl.ItemsSource = _ganttItems;
+            System.Diagnostics.Debug.WriteLine($"GanttBarsItemsControl.ItemsSource установлен ({_ganttItems.Count} элементов)");
 
             // Добавляем вертикальную линию "Сегодня"
             AddTodayLine();
 
             // Обновляем статистику
             UpdateStatistics();
+
+            System.Diagnostics.Debug.WriteLine("=== ПОСТРОЕНИЕ ЗАВЕРШЕНО ===");
         }
 
-        // Получение цвета полосы в зависимости от статуса
+        /// <summary>
+        /// Получение цвета полосы диаграммы в зависимости от статуса задачи
+        /// </summary>
         private SolidColorBrush GetColorByStatus(string status, bool isMainTask)
         {
             Color baseColor;
@@ -169,30 +196,31 @@ namespace Командное_управление_проектами.Views
             switch (status)
             {
                 case "Завершена":
-                    baseColor = Color.FromRgb(76, 175, 80);      // Зеленый
+                    baseColor = Color.FromRgb(76, 175, 80);
                     break;
                 case "В процессе":
-                    baseColor = Color.FromRgb(255, 152, 0);      // Оранжевый
+                    baseColor = Color.FromRgb(255, 152, 0);
                     break;
                 case "Открыта":
-                    baseColor = Color.FromRgb(158, 158, 158);    // Серый
+                    baseColor = Color.FromRgb(158, 158, 158);
                     break;
                 default:
                     baseColor = isMainTask
-                        ? Color.FromRgb(0, 122, 204)             // Синий для основной задачи
-                        : Color.FromRgb(32, 178, 170);           // Бирюзовый для подзадач
+                        ? Color.FromRgb(0, 122, 204)
+                        : Color.FromRgb(32, 178, 170);
                     break;
             }
 
             return new SolidColorBrush(baseColor);
         }
 
-        // Добавление вертикальной линии "Сегодня" на диаграмму
+        /// <summary>
+        /// Добавление вертикальной линии "Сегодня" на диаграмму
+        /// </summary>
         private void AddTodayLine()
         {
             var today = DateTime.Today;
 
-            // Проверяем, попадает ли сегодняшний день в диапазон диаграммы
             if (today >= _overallStartDate && today <= _overallEndDate)
             {
                 double todayOffset = (today - _overallStartDate).TotalDays * DayWidth;
@@ -209,11 +237,9 @@ namespace Командное_управление_проектами.Views
                     ToolTip = $"Сегодня: {today:dd.MM.yyyy}"
                 };
 
-                // Добавляем линию на Canvas
                 GanttCanvas.Children.Add(todayLine);
 
-                // Добавляем метку "Сегодня" над линией
-                var todayLabel = new System.Windows.Controls.TextBlock
+                var todayLabel = new TextBlock
                 {
                     Text = "Сегодня",
                     FontSize = 10,
@@ -229,7 +255,9 @@ namespace Командное_управление_проектами.Views
             }
         }
 
-        // Обновление статистики проекта
+        /// <summary>
+        /// Обновление панели статистики проекта
+        /// </summary>
         private void UpdateStatistics()
         {
             int totalDays = (_overallEndDate - _overallStartDate).Days + 1;
@@ -240,14 +268,16 @@ namespace Командное_управление_проектами.Views
 
             double completionPercentage = totalTasks > 0 ? (completedTasks * 100.0 / totalTasks) : 0;
 
-            StatsText.Text = $"📊 Всего задач: {totalTasks} | " +
-                           $"✅ Завершено: {completedTasks} ({completionPercentage:F0}%) | " +
-                           $"🔄 В процессе: {inProgressTasks} | " +
-                           $"⏸️ Открыто: {openTasks} | " +
-                           $"📅 Общая длительность: {totalDays} дн.";
+            StatsText.Text = $" Всего задач: {totalTasks} | " +
+                           $" Завершено: {completedTasks} ({completionPercentage:F0}%) | " +
+                           $" В процессе: {inProgressTasks} | " +
+                           $" Открыто: {openTasks} | " +
+                           $" Общая длительность: {totalDays} дн.";
         }
 
-        // Обработчик экспорта диаграммы в изображение
+        /// <summary>
+        /// Обработчик экспорта диаграммы в изображение
+        /// </summary>
         private void Export_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -261,12 +291,11 @@ namespace Командное_управление_проектами.Views
 
                 if (saveFileDialog.ShowDialog() == true)
                 {
-                    // Получаем область диаграммы для рендеринга
-                    var chartArea = ChartArea;
+                    var mainGrid = (Grid)this.Content;
+                    var border = (Border)mainGrid.Children[0];
 
-                    // Создаем RenderTargetBitmap
-                    var width = (int)chartArea.ActualWidth;
-                    var height = (int)chartArea.ActualHeight;
+                    var width = (int)border.ActualWidth;
+                    var height = (int)border.ActualHeight;
 
                     if (width <= 0 || height <= 0)
                     {
@@ -284,9 +313,8 @@ namespace Командное_управление_проектами.Views
                         96d,
                         PixelFormats.Pbgra32);
 
-                    renderBitmap.Render(chartArea);
+                    renderBitmap.Render(border);
 
-                    // Определяем кодировщик на основе выбранного расширения
                     BitmapEncoder encoder;
                     if (saveFileDialog.FileName.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase))
                     {
@@ -299,7 +327,6 @@ namespace Командное_управление_проектами.Views
 
                     encoder.Frames.Add(BitmapFrame.Create(renderBitmap));
 
-                    // Сохраняем файл
                     using (var fileStream = new System.IO.FileStream(saveFileDialog.FileName, System.IO.FileMode.Create))
                     {
                         encoder.Save(fileStream);
@@ -320,17 +347,29 @@ namespace Командное_управление_проектами.Views
             }
         }
 
-        // Обработка горячих клавиш
+        /// <summary>
+        /// Обработчик события прокрутки для синхронизации левой панели
+        /// </summary>
+        private void MainScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
+        {
+            if (e.VerticalChange != 0)
+            {
+                var margin = new Thickness(0, -e.VerticalOffset, 0, 0);
+                TaskNamesItemsControl.Margin = margin;
+            }
+        }
+
+        /// <summary>
+        /// Обработка горячих клавиш окна
+        /// </summary>
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
 
-            // Escape - закрыть окно
             if (e.Key == Key.Escape)
             {
                 this.Close();
             }
-            // Ctrl+E - экспорт
             else if (e.Key == Key.E && Keyboard.Modifiers == ModifierKeys.Control)
             {
                 Export_Click(this, new RoutedEventArgs());

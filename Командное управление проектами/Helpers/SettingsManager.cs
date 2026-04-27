@@ -15,9 +15,7 @@ namespace Командное_управление_проектами.Helpers
 
         private static UserSettingsModel _currentSettings;
 
-        /// <summary>
         /// Получить текущие настройки
-        /// </summary>
         public static UserSettingsModel GetSettings(int userId)
         {
             if (_currentSettings == null || _currentSettings.ID_пользователя != userId)
@@ -27,9 +25,7 @@ namespace Командное_управление_проектами.Helpers
             return _currentSettings;
         }
 
-        /// <summary>
         /// Загрузить настройки из файла
-        /// </summary>
         private static UserSettingsModel LoadSettings(int userId)
         {
             try
@@ -81,9 +77,7 @@ namespace Командное_управление_проектами.Helpers
             };
         }
 
-        /// <summary>
         /// Сохранить настройки в файл
-        /// </summary>
         public static void SaveSettings(UserSettingsModel settings)
         {
             try
@@ -128,9 +122,7 @@ namespace Командное_управление_проектами.Helpers
             }
         }
 
-        /// <summary>
         /// Применить настройки к приложению
-        /// </summary>
         public static void ApplySettings(UserSettingsModel settings, UserModel currentUser)
         {
             try
@@ -167,9 +159,7 @@ namespace Командное_управление_проектами.Helpers
             }
         }
 
-        /// <summary>
         /// Сброс настроек к значениям по умолчанию
-        /// </summary>
         public static UserSettingsModel ResetToDefaults(int userId)
         {
             var defaultSettings = new UserSettingsModel

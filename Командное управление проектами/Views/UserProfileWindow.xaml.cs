@@ -291,7 +291,7 @@ namespace Командное_управление_проектами.Views
                 // Применяем настройки к приложению (тема, уведомления и т.д.)
                 SettingsManager.ApplySettings(_currentSettings, _currentUser);
 
-                MessageBox.Show("Настройки успешно сохранены и применены!",
+                MessageBox.Show("Настройки успешно сохранены и применены! Для применения настроек требуется перезагрузить приложение",
                     "Успех",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);

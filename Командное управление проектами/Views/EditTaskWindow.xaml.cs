@@ -1,9 +1,9 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.Collections.Generic;
-using System.Data.SqlClient;
 using System.Diagnostics;
 using System.IO;
-using Microsoft.Win32;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -13,11 +13,15 @@ using Командное_управление_проектами.Views;
 
 namespace Командное_управление_проектами
 {
+
+    /// Окно редактирования задачи с поддержкой управления подзадачами и файлами
+
     public partial class EditTaskWindow : Window
     {
-        private readonly string connectionString = "Data Source=DESKTOP-JRVC3AP;Initial Catalog=Coursework;Integrated Security=True";
         private TaskModel _task;
         private UserModel _currentUser;
+
+        /// Конструктор окна редактирования задачи
 
         public EditTaskWindow(TaskModel task, UserModel currentUser)
         {
@@ -36,11 +40,37 @@ namespace Командное_управление_проектами
             LoadSubtasks();
             // Загружаем файлы
             LoadFiles();
+            // Загружаем историю изменений
+            LoadHistory();
             // Устанавливаем фокус на первое поле
             TitleBox.Focus();
+
+            // Ограничение прав для роли "Пользователь"
+
+            if (_currentUser.Роль == "Пользователь")
+            {
+                // 1. Скрываем кнопку сохранения основных изменений
+                SaveTaskBtn.Visibility = Visibility.Collapsed;
+
+                // 2. Блокируем поля ввода, чтобы нельзя было менять данные
+                TitleBox.IsReadOnly = true;
+                DescBox.IsReadOnly = true;
+
+                PriorityBox.IsEnabled = false;
+                StatusBox.IsEnabled = false;
+                StartDatePicker.IsEnabled = false;
+                EndDatePicker.IsEnabled = false;
+                ProjectComboBox.IsEnabled = false;
+                EmployeeComboBox.IsEnabled = false;
+
+                // Меняем заголовок окна
+                Title = "Просмотр задачи";
+            }
         }
 
-        // Применение текущей темы приложения к окну
+
+        /// Применение текущей темы приложения к окну
+
         private void ApplyTheme()
         {
             var theme = ThemeManager.GetCurrentTheme();
@@ -56,7 +86,9 @@ namespace Командное_управление_проектами
             this.Resources.MergedDictionaries.Add(themeDict);
         }
 
-        // Загрузка списка проектов в ComboBox
+
+        /// Загрузка списка проектов в ComboBox
+
         private void LoadProjects()
         {
             try
@@ -73,7 +105,9 @@ namespace Командное_управление_проектами
             }
         }
 
-        // Загрузка списка сотрудников в ComboBox
+
+        /// Загрузка списка сотрудников в ComboBox
+
         private void LoadEmployees()
         {
             try
@@ -90,7 +124,9 @@ namespace Командное_управление_проектами
             }
         }
 
-        // Загрузка данных задачи в поля формы
+
+        /// Загрузка данных задачи в поля формы
+
         private void LoadTaskData()
         {
             TitleBox.Text = _task.Название_задачи;
@@ -118,8 +154,8 @@ namespace Командное_управление_проектами
                 }
             }
 
-            // Получаем ID проекта из базы данных
-            int? projectId = GetProjectIdByTaskId(_task.ID_задачи);
+            // Получаем ID проекта из базы данных через DbHelper
+            int? projectId = DbHelper.GetProjectIdByTaskId(_task.ID_задачи);
             if (projectId.HasValue)
             {
                 ProjectComboBox.SelectedValue = projectId.Value;
@@ -132,34 +168,28 @@ namespace Командное_управление_проектами
             }
         }
 
-        // Получение ID проекта по ID задачи из базы данных
-        private int? GetProjectIdByTaskId(int taskId)
+        /// Загрузка истории изменений задачи
+
+        private void LoadHistory()
         {
             try
             {
-                using (SqlConnection conn = new SqlConnection(connectionString))
-                {
-                    conn.Open();
-                    string query = "SELECT ID_проекта FROM Задачи WHERE ID_задачи = @taskId";
-                    using (SqlCommand cmd = new SqlCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@taskId", taskId);
-                        var result = cmd.ExecuteScalar();
-                        return result != null ? Convert.ToInt32(result) : (int?)null;
-                    }
-                }
+                var history = DbHelper.GetHistory("Задача", _task.ID_задачи);
+                HistoryGrid.ItemsSource = null;
+                HistoryGrid.ItemsSource = history;
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при получении проекта:\n{ex.Message}",
+                MessageBox.Show($"Ошибка загрузки истории:\n{ex.Message}",
                     "Ошибка",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
-                return null;
             }
         }
 
-        // Обработчик нажатия кнопки "Сохранить"
+
+        /// Обработчик нажатия кнопки "Сохранить"
+
         private void Save_Click(object sender, RoutedEventArgs e)
         {
             // Получаем данные из полей
@@ -220,7 +250,9 @@ namespace Командное_управление_проектами
             if (endDate.HasValue && !startDate.HasValue)
             {
                 MessageBox.Show("Если указана дата завершения, необходимо указать и дату начала.",
-                    "Ошибка валидации", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    "Ошибка валидации",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
                 StartDatePicker.Focus();
                 return;
             }
@@ -229,45 +261,99 @@ namespace Командное_управление_проектами
             if (startDate.HasValue && endDate.HasValue && startDate.Value > endDate.Value)
             {
                 MessageBox.Show("Дата начала не может быть позже даты завершения.",
-                    "Ошибка валидации", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    "Ошибка валидации",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
                 StartDatePicker.Focus();
                 return;
             }
 
             try
             {
-                using (SqlConnection conn = new SqlConnection(connectionString))
-                {
-                    conn.Open();
-                    string query = @"
-                        UPDATE Задачи 
-                        SET Название_задачи = @title, 
-                            Описание = @desc, 
-                            Приоритет = @priority, 
-                            Статус = @status, 
-                            Дата_начала = @startDate,
-                            Дата_завершения = @endDate,
-                            ID_проекта = @projectId, 
-                            ID_ответственного = @empId
-                        WHERE ID_задачи = @id";
+                List<string> changes = new List<string>();
 
-                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                // Проверяем изменение названия
+                if (_task.Название_задачи != title)
+                {
+                    changes.Add($"Изменено название: '{_task.Название_задачи}' → '{title}'");
+                }
+
+                // Проверяем изменение описания
+                if (_task.Описание != desc)
+                {
+                    if (string.IsNullOrEmpty(_task.Описание) && !string.IsNullOrEmpty(desc))
                     {
-                        cmd.Parameters.AddWithValue("@title", title);
-                        cmd.Parameters.AddWithValue("@desc", string.IsNullOrEmpty(desc) ? (object)DBNull.Value : desc);
-                        cmd.Parameters.AddWithValue("@priority", string.IsNullOrEmpty(priority) ? (object)DBNull.Value : priority);
-                        cmd.Parameters.AddWithValue("@status", status);
-                        cmd.Parameters.AddWithValue("@startDate", startDate.HasValue ? (object)startDate.Value : DBNull.Value);
-                        cmd.Parameters.AddWithValue("@endDate", endDate.HasValue ? (object)endDate.Value : DBNull.Value); cmd.Parameters.AddWithValue("@projectId", projectId.Value);
-                        cmd.Parameters.AddWithValue("@empId", employeeId.HasValue ? (object)employeeId.Value : DBNull.Value);
-                        cmd.Parameters.AddWithValue("@id", _task.ID_задачи);
-                        cmd.ExecuteNonQuery();
+                        changes.Add("Добавлено описание");
+                    }
+                    else if (!string.IsNullOrEmpty(_task.Описание) && string.IsNullOrEmpty(desc))
+                    {
+                        changes.Add("Удалено описание");
+                    }
+                    else
+                    {
+                        changes.Add("Изменено описание");
                     }
                 }
 
-                // Логируем изменение
-                DbHelper.LogChange("Задача", _task.ID_задачи,
-                    $"Изменена задача '{title}'", _currentUser.ID_сотрудника);
+                // Проверяем изменение приоритета
+                if (_task.Приоритет != priority)
+                {
+                    changes.Add($"Изменен приоритет: '{_task.Приоритет}' → '{priority}'");
+                }
+
+                // Проверяем изменение статуса
+                if (_task.Статус != status)
+                {
+                    changes.Add($"Изменен статус: '{_task.Статус}' → '{status}'");
+                }
+
+                // Проверяем изменение даты начала
+                if (_task.Дата_начала != startDate)
+                {
+                    string oldDate = _task.Дата_начала?.ToString("dd.MM.yyyy") ?? "не указана";
+                    string newDate = startDate?.ToString("dd.MM.yyyy") ?? "не указана";
+                    changes.Add($"Изменена дата начала: {oldDate} → {newDate}");
+                }
+
+                // Проверяем изменение даты завершения
+                if (_task.Дата_завершения != endDate)
+                {
+                    string oldDate = _task.Дата_завершения?.ToString("dd.MM.yyyy") ?? "не указана";
+                    string newDate = endDate?.ToString("dd.MM.yyyy") ?? "не указана";
+                    changes.Add($"Изменена дата завершения: {oldDate} → {newDate}");
+                }
+
+                // Проверяем изменение ответственного
+                if (_task.ID_ответственного != employeeId)
+                {
+                    string oldEmployee = _task.ID_ответственного.HasValue
+                        ? (EmployeeComboBox.Items.Cast<EmployeeModel>()
+                            .FirstOrDefault(emp => emp.ID_сотрудника == _task.ID_ответственного.Value)?.Имя_сотрудника ?? "Неизвестно")
+                        : "не назначен";
+                    string newEmployee = employeeId.HasValue
+                        ? (EmployeeComboBox.SelectedItem as EmployeeModel)?.Имя_сотрудника ?? "Неизвестно"
+                        : "не назначен";
+                    changes.Add($"Изменен ответственный: {oldEmployee} → {newEmployee}");
+                }
+
+                // Обновляем задачу через DbHelper
+                _task.Название_задачи = title;
+                _task.Описание = desc;
+                _task.Приоритет = priority;
+                _task.Статус = status;
+                _task.Дата_начала = startDate;
+                _task.Дата_завершения = endDate;
+                _task.ID_ответственного = employeeId;
+
+                DbHelper.UpdateTask(_task, projectId.Value);
+
+                if (changes.Count > 0)
+                {
+                    foreach (var change in changes)
+                    {
+                        DbHelper.LogChange("Задача", _task.ID_задачи, change, _currentUser.ID_сотрудника);
+                    }
+                }
 
                 // Формируем сообщение об успехе
                 string projectName = (ProjectComboBox.SelectedItem as ProjectModel)?.Название_проекта;
@@ -306,7 +392,9 @@ namespace Командное_управление_проектами
             }
         }
 
-        // Загрузка списка подзадач
+
+        /// Загрузка списка подзадач
+
         private void LoadSubtasks()
         {
             try
@@ -322,7 +410,8 @@ namespace Командное_управление_проектами
             }
         }
 
-        // Обработчик добавления подзадачи
+        /// Обработчик добавления подзадачи
+
         private void AddSubtask_Click(object sender, RoutedEventArgs e)
         {
             var addSubtaskWindow = new AddSubtaskWindow(_task.ID_задачи);
@@ -332,10 +421,13 @@ namespace Командное_управление_проектами
                     $"Для задачи '{_task.Название_задачи}' добавлена новая подзадача",
                     _currentUser.ID_сотрудника);
                 LoadSubtasks();
+                LoadHistory();
             }
         }
 
-        // Обработчик редактирования подзадачи
+
+        /// Обработчик редактирования подзадачи
+
         private void EditSubtask_Click(object sender, RoutedEventArgs e)
         {
             if (SubtasksGrid.SelectedItem is SubtaskModel selected)
@@ -347,6 +439,7 @@ namespace Командное_управление_проектами
                         $"Изменена подзадача '{selected.Название_подзадачи}'",
                         _currentUser.ID_сотрудника);
                     LoadSubtasks();
+                    LoadHistory();
                 }
             }
             else
@@ -358,28 +451,29 @@ namespace Командное_управление_проектами
             }
         }
 
-        // Обработчик удаления подзадачи
+
+        /// Обработчик удаления подзадачи
+
         private void DeleteSubtask_Click(object sender, RoutedEventArgs e)
         {
-            if (SubtasksGrid.SelectedItem is SubtaskModel selected)
+            if (SubtasksGrid.SelectedItem is SubtaskModel selectedSubtask)
             {
-                if (MessageBox.Show($"Удалить подзадачу '{selected.Название_подзадачи}'?",
+                if (MessageBox.Show($"Удалить подзадачу '{selectedSubtask.Название_подзадачи}'?",
                     "Подтверждение",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Question) == MessageBoxResult.Yes)
                 {
                     try
                     {
-                        DbHelper.DeleteSubtask(selected.ID_подзадачи);
-                        DbHelper.LogChange("Подзадача", _task.ID_задачи,
-                            $"Удалена подзадача '{selected.Название_подзадачи}'",
-                            _currentUser.ID_сотрудника);
-                        LoadSubtasks();
+                        // Удаляем через DbHelper
+                        DbHelper.DeleteSubtask(selectedSubtask.ID_подзадачи);
 
-                        MessageBox.Show("Подзадача успешно удалена.",
-                            "Успех",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Information);
+                        DbHelper.LogChange("Задача", _task.ID_задачи,
+                            $"Удалена подзадача: \"{selectedSubtask.Название_подзадачи}\"",
+                            _currentUser.ID_сотрудника);
+
+                        LoadSubtasks();
+                        LoadHistory();
                     }
                     catch (Exception ex)
                     {
@@ -393,13 +487,15 @@ namespace Командное_управление_проектами
             else
             {
                 MessageBox.Show("Выберите подзадачу для удаления.",
-                    "Информация",
+                    "Предупреждение",
                     MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                    MessageBoxImage.Warning);
             }
         }
 
-        // Загрузка списка файлов
+
+        /// Загрузка списка файлов
+
         private void LoadFiles()
         {
             try
@@ -415,59 +511,54 @@ namespace Командное_управление_проектами
             }
         }
 
-        // Обработчик добавления файла
+
+        /// Обработчик добавления файла
+
         private void AddFile_Click(object sender, RoutedEventArgs e)
         {
-            try
+            var openFileDialog = new Microsoft.Win32.OpenFileDialog
             {
-                Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
-                dlg.Title = "Выберите файл для загрузки";
-                dlg.Filter = "Все файлы (*.*)|*.*";
+                Title = "Выберите файл для добавления",
+                Filter = "Все файлы (*.*)|*.*"
+            };
 
-                if (dlg.ShowDialog() == true)
+            if (openFileDialog.ShowDialog() == true)
+            {
+                try
                 {
-                    // Создаём папку для вложений, если её нет
-                    string attachmentsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Attachments");
-                    Directory.CreateDirectory(attachmentsDir);
+                    string filePath = openFileDialog.FileName;
+                    string fileName = System.IO.Path.GetFileName(filePath);
 
-                    string sourceFile = dlg.FileName;
-                    string fileName = Path.GetFileName(sourceFile);
-                    string destFile = Path.Combine(attachmentsDir, fileName);
-
-                    // Копируем файл в папку Attachments
-                    File.Copy(sourceFile, destFile, true);
-
-                    // Создаём запись в базе данных
-                    var newFile = new FileModel
+                    var fileModel = new FileModel
                     {
                         Название_файла = fileName,
-                        Путь_к_файлу = fileName, // Сохраняем только имя файла
+                        Путь_к_файлу = filePath,
                         ID_задачи = _task.ID_задачи
                     };
 
-                    DbHelper.AddFile(newFile);
-                    DbHelper.LogChange("Файл", _task.ID_задачи,
-                        $"Добавлен файл '{fileName}' к задаче '{_task.Название_задачи}'",
-                        _currentUser.ID_сотрудника);
+                    // Добавляем файл через DbHelper
+                    DbHelper.AddFile(fileModel);
+
+                    // ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ
+                    DbHelper.LogChange("Задача", _task.ID_задачи,
+                        $"Прикреплён файл: \"{fileName}\"", _currentUser.ID_сотрудника);
 
                     LoadFiles();
-
-                    MessageBox.Show($"Файл '{fileName}' успешно добавлен.",
-                        "Успех",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
+                    LoadHistory();
                 }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка при добавлении файла:\n{ex.Message}",
-                    "Ошибка",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка при добавлении файла:\n{ex.Message}",
+                        "Ошибка",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                }
             }
         }
 
-        // Обработчик открытия файла
+
+        /// Обработчик открытия файла
+
         private void OpenFile_Click(object sender, RoutedEventArgs e)
         {
             if (FilesListBox.SelectedItem is FileModel selected)
@@ -506,39 +597,30 @@ namespace Командное_управление_проектами
             }
         }
 
-        // Обработчик удаления файла
+
+        /// Обработчик удаления файла
+
         private void DeleteFile_Click(object sender, RoutedEventArgs e)
         {
-            if (FilesListBox.SelectedItem is FileModel selected)
+            if (FilesListBox.SelectedItem is FileModel selectedFile)
             {
-                if (MessageBox.Show($"Удалить файл '{selected.Название_файла}'?",
+                if (MessageBox.Show($"Удалить файл '{selectedFile.Название_файла}'?",
                     "Подтверждение",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Question) == MessageBoxResult.Yes)
                 {
                     try
                     {
-                        // Удаляем запись из базы данных
-                        DbHelper.DeleteFile(selected.ID_файла);
+                        // Удаляем через DbHelper
+                        DbHelper.DeleteFile(selectedFile.ID_файла);
 
-                        // Удаляем физический файл
-                        string attachmentsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Attachments");
-                        string fullPath = Path.Combine(attachmentsDir, selected.Путь_к_файлу);
-
-                        if (File.Exists(fullPath))
-                        {
-                            File.Delete(fullPath);
-                        }
-
-                        DbHelper.LogChange("Файл", _task.ID_задачи,
-                            $"Удалён файл '{selected.Название_файла}' из задачи '{_task.Название_задачи}'",
+                        // ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ
+                        DbHelper.LogChange("Задача", _task.ID_задачи,
+                            $"Удалён файл: \"{selectedFile.Название_файла}\"",
                             _currentUser.ID_сотрудника);
-                        LoadFiles();
 
-                        MessageBox.Show("Файл успешно удалён.",
-                            "Успех",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Information);
+                        LoadFiles();
+                        LoadHistory();
                     }
                     catch (Exception ex)
                     {
@@ -552,19 +634,24 @@ namespace Командное_управление_проектами
             else
             {
                 MessageBox.Show("Выберите файл для удаления.",
-                    "Информация",
+                    "Предупреждение",
                     MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                    MessageBoxImage.Warning);
             }
         }
 
-        // Обработка горячих клавиш
+        /// Обработка горячих клавиш
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
 
+            // Ctrl+Enter - сохранить изменения
+            if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                Save_Click(this, new RoutedEventArgs());
+            }
             // Escape - закрыть окно
-            if (e.Key == Key.Escape)
+            else if (e.Key == Key.Escape)
             {
                 this.Close();
             }

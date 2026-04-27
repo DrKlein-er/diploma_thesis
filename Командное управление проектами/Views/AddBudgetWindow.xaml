@@ -85,7 +85,7 @@
                      ToolTip="Введите цель расходования средств"/>
 
             <!-- Поле "Сумма" -->
-            <TextBlock Text="Сумма (₽):" 
+            <TextBlock Text="Сумма ₽:" 
                        Style="{StaticResource FieldLabelStyle}"/>
             <TextBox x:Name="AmountTextBox" 
                      Style="{StaticResource InputTextBoxStyle}"

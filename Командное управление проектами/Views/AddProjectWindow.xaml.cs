@@ -9,9 +9,17 @@ namespace Командное_управление_проектами.Views
 {
     public partial class AddProjectWindow : Window
     {
-        public AddProjectWindow()
+        private UserModel _currentUser; // Поле для текущего пользователя
+
+        /// <summary>
+        /// Конструктор окна добавления проекта
+        /// </summary>
+        /// <param name="currentUser">Текущий авторизованный пользователь (опционально)</param>
+        public AddProjectWindow(UserModel currentUser = null)
         {
             InitializeComponent();
+            _currentUser = currentUser; // Сохраняем пользователя
+
             // Применяем текущую тему
             ApplyTheme();
             // Устанавливаем дату начала по умолчанию на сегодня
@@ -164,8 +172,15 @@ namespace Командное_управление_проектами.Views
 
             try
             {
-                // Добавление проекта в базу данных через DbHelper
-                DbHelper.AddProject(project);
+                // Добавление проекта в базу данных через DbHelper (возвращает ID)
+                int newProjectId = DbHelper.AddProject(project);
+
+                // ЛОГИРУЕМ СОЗДАНИЕ ПРОЕКТА (только если передан пользователь)
+                if (_currentUser != null)
+                {
+                    DbHelper.LogChange("Проект", newProjectId,
+                        $"Создан проект: \"{name}\"", _currentUser.ID_сотрудника);
+                }
 
                 // Формируем сообщение об успехе с подробной информацией
                 string dateInfo = $"\nПериод: {startDate:dd.MM.yyyy} - {endDate:dd.MM.yyyy}";

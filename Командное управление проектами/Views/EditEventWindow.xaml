@@ -102,7 +102,7 @@
                        Style="{StaticResource FieldLabelStyle}"/>
             <TextBox x:Name="DescBox" 
                      Style="{StaticResource MultilineTextBoxStyle}"
-                     ToolTip="Введите описание события (необязательно)"
+                     ToolTip="Введите описание события"
                      MaxLength="500"/>
 
             <!-- Поле "Дата события" -->

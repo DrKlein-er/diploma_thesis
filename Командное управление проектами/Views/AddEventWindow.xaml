@@ -114,7 +114,7 @@
                         ToolTip="Выберите дату события"/>
 
             <!-- Поле "Проект" -->
-            <TextBlock Text="Связанный проект (необязательно):" 
+            <TextBlock Text="Связанный проект:" 
                        Style="{StaticResource FieldLabelStyle}"/>
             <ComboBox x:Name="ProjectComboBox" 
                       Height="35"

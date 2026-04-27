@@ -439,7 +439,7 @@
                         <DataGrid x:Name="RecentActivityGrid" 
                                   AutoGenerateColumns="False" 
                                   IsReadOnly="True"
-                                  Height="250">
+                                  Height="205">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Дата" 
                                                     Binding="{Binding Дата}" 

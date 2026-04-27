@@ -123,12 +123,6 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Кнопка экспорта -->
-                <Button Grid.Column="0"
-                        Content="📥 Экспортировать" 
-                        Click="Export_Click"
-                        Style="{StaticResource ExportButtonStyle}"/>
-
                 <!-- Легенда -->
                 <StackPanel Grid.Column="2" 
                             Orientation="Horizontal" 
@@ -191,7 +185,7 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Левая панель: названия задач -->
-                <Grid Grid.Column="0">
+                <Grid Grid.Column="0" ClipToBounds="True">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="50"/>
                         <RowDefinition Height="*"/>
@@ -206,31 +200,36 @@
                                    Style="{StaticResource HeaderStyle}"/>
                     </Border>
 
-                    <!-- Список названий задач -->
-                    <ScrollViewer Grid.Row="1" 
-                                  VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled">
-                        <ItemsControl x:Name="TaskNamesItemsControl">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border BorderBrush="{DynamicResource BorderBrush}" 
-                                            BorderThickness="0,0,1,1" 
-                                            Background="{DynamicResource BackgroundBrush}"
-                                            Height="35">
-                                        <TextBlock Text="{Binding Name}" 
-                                                   Style="{StaticResource TaskNameStyle}"
-                                                   ToolTip="{Binding Name}"/>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
+                    <!-- Контейнер для списка названий с ограничением видимости -->
+                    <Border Grid.Row="1"
+                            BorderBrush="{DynamicResource BorderBrush}" 
+                            BorderThickness="0,0,1,0"
+                            ClipToBounds="True">
+                        <Grid>
+                            <ItemsControl x:Name="TaskNamesItemsControl">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="{DynamicResource BorderBrush}" 
+                                                BorderThickness="0,0,0,1" 
+                                                Background="{DynamicResource BackgroundBrush}"
+                                                Height="35">
+                                            <TextBlock Text="{Binding Name}" 
+                                                       Style="{StaticResource TaskNameStyle}"
+                                                       ToolTip="{Binding Name}"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Grid>
+                    </Border>
                 </Grid>
 
                 <!-- Правая панель: временная шкала и полосы диаграммы -->
                 <ScrollViewer Grid.Column="1" 
+                              x:Name="MainScrollViewer"
                               HorizontalScrollBarVisibility="Auto" 
-                              VerticalScrollBarVisibility="Auto">
+                              VerticalScrollBarVisibility="Auto"
+                              ScrollChanged="MainScrollViewer_ScrollChanged">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="50"/>
@@ -294,17 +293,24 @@
                                             <Canvas/>
                                         </ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
+
+                                    <!-- КРИТИЧНО: ItemContainerStyle для применения Canvas.Top и Canvas.Left -->
+                                    <ItemsControl.ItemContainerStyle>
+                                        <Style TargetType="ContentPresenter">
+                                            <Setter Property="Canvas.Left" Value="{Binding BarLeft}"/>
+                                            <Setter Property="Canvas.Top" Value="{Binding BarTop}"/>
+                                        </Style>
+                                    </ItemsControl.ItemContainerStyle>
+
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Border Height="22" 
                                                     Background="{Binding BarColor}" 
-                                                    Canvas.Left="{Binding BarLeft}"
-                                                    Canvas.Top="{Binding BarTop}"
                                                     Width="{Binding BarWidth}"
                                                     CornerRadius="4"
                                                     ToolTip="{Binding ToolTipText}">
                                                 <TextBlock Text="{Binding Duration}" 
-                                                           Style="{StaticResource BarTextStyle}"/>
+                                                            Style="{StaticResource BarTextStyle}"/>
                                             </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>

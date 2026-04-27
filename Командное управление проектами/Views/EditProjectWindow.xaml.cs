@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -27,27 +29,48 @@ namespace Командное_управление_проектами.Views
 
             if (_isNewProject)
             {
-                // РЕЖИМ СОЗДАНИЯ
                 Title = "Новый проект";
-                // Блокируем вкладки (они станут доступны после создания проекта)
                 BudgetTab.IsEnabled = false;
                 ResourcesTab.IsEnabled = false;
                 HistoryTab.IsEnabled = false;
             }
             else
             {
-                // РЕЖИМ РЕДАКТИРОВАНИЯ
                 Title = "Редактировать проект";
-                // Заполняем данные проекта
                 FillProjectData();
-                // Загружаем данные для вкладок
                 LoadBudget();
                 LoadResources();
                 LoadHistory();
             }
+            if (_currentUser.Роль == "Пользователь")
+            {
+                // 1. Скрываем кнопку сохранения изменений
+                SaveProjectBtn.Visibility = Visibility.Collapsed;
 
-            // Устанавливаем фокус на первое поле
-            TitleBox.Focus();
+                // 2. Скрываем кнопки управления бюджетом
+                AddBudgetButton.Visibility = Visibility.Collapsed;
+                DeleteBudgetButton.Visibility = Visibility.Collapsed;
+
+                // 3. Скрываем кнопки управления ресурсами
+                AssignResourceButton.Visibility = Visibility.Collapsed;
+                RemoveResourceButton.Visibility = Visibility.Collapsed;
+
+                // Дополнительно: Блокируем поля для ввода, чтобы было понятно, что это режим просмотра
+                TitleBox.IsReadOnly = true;
+                DescBox.IsReadOnly = true;
+                StartDate.IsEnabled = false;
+                EndDate.IsEnabled = false;
+                StatusBox.IsEnabled = false;
+                EmployeeComboBox.IsEnabled = false;
+
+                // Меняем заголовок окна для ясности
+                Title = "Просмотр проекта (Только чтение)";
+            }
+            // ================================================================
+
+            // Устанавливаем фокус на первое поле (если доступно)
+            if (TitleBox.IsEnabled && !TitleBox.IsReadOnly)
+                TitleBox.Focus();
         }
 
         // Применение текущей темы приложения к окну
@@ -148,6 +171,7 @@ namespace Командное_управление_проектами.Views
             try
             {
                 var history = DbHelper.GetHistory("Проект", _project.ID_проекта);
+                HistoryGrid.ItemsSource = null;
                 HistoryGrid.ItemsSource = history;
             }
             catch (Exception ex)
@@ -203,18 +227,88 @@ namespace Командное_управление_проектами.Views
                 return;
             }
 
-            // Обновляем данные проекта
-            _project.Название_проекта = title;
-            _project.Описание = desc;
-            _project.Дата_начала = start;
-            _project.Дата_завершения = end;
-            _project.Статус = status;
-            _project.ID_ответственного = employeeId;
-
             try
             {
+                // ✅ ОТСЛЕЖИВАЕМ ИЗМЕНЕНИЯ ДЛЯ ДЕТАЛЬНОГО ЛОГИРОВАНИЯ
+                List<string> changes = new List<string>();
+
+                // Проверяем изменение названия
+                if (_project.Название_проекта != title)
+                {
+                    changes.Add($"Изменено название: '{_project.Название_проекта}' → '{title}'");
+                }
+
+                // Проверяем изменение описания
+                if (_project.Описание != desc)
+                {
+                    if (string.IsNullOrEmpty(_project.Описание) && !string.IsNullOrEmpty(desc))
+                    {
+                        changes.Add("Добавлено описание");
+                    }
+                    else if (!string.IsNullOrEmpty(_project.Описание) && string.IsNullOrEmpty(desc))
+                    {
+                        changes.Add("Удалено описание");
+                    }
+                    else
+                    {
+                        changes.Add("Изменено описание");
+                    }
+                }
+
+                // Проверяем изменение статуса
+                if (_project.Статус != status)
+                {
+                    changes.Add($"Изменен статус: '{_project.Статус}' → '{status}'");
+                }
+
+                // Проверяем изменение даты начала
+                if (_project.Дата_начала != start)
+                {
+                    string oldDate = _project.Дата_начала?.ToString("dd.MM.yyyy") ?? "не указана";
+                    string newDate = start?.ToString("dd.MM.yyyy") ?? "не указана";
+                    changes.Add($"Изменена дата начала: {oldDate} → {newDate}");
+                }
+
+                // Проверяем изменение даты завершения
+                if (_project.Дата_завершения != end)
+                {
+                    string oldDate = _project.Дата_завершения?.ToString("dd.MM.yyyy") ?? "не указана";
+                    string newDate = end?.ToString("dd.MM.yyyy") ?? "не указана";
+                    changes.Add($"Изменена дата завершения: {oldDate} → {newDate}");
+                }
+
+                // Проверяем изменение ответственного
+                if (_project.ID_ответственного != employeeId)
+                {
+                    string oldEmployee = _project.ID_ответственного.HasValue
+                        ? (EmployeeComboBox.Items.Cast<EmployeeModel>()
+                            .FirstOrDefault(emp => emp.ID_сотрудника == _project.ID_ответственного.Value)?.Имя_сотрудника ?? "Неизвестно")
+                        : "не назначен";
+                    string newEmployee = employeeId.HasValue
+                        ? (EmployeeComboBox.SelectedItem as EmployeeModel)?.Имя_сотрудника ?? "Неизвестно"
+                        : "не назначен";
+                    changes.Add($"Изменен ответственный: {oldEmployee} → {newEmployee}");
+                }
+
+                // Обновляем данные проекта
+                _project.Название_проекта = title;
+                _project.Описание = desc;
+                _project.Дата_начала = start;
+                _project.Дата_завершения = end;
+                _project.Статус = status;
+                _project.ID_ответственного = employeeId;
+
                 // Обновляем проект через DbHelper
                 DbHelper.UpdateProject(_project);
+
+                // ✅ ЛОГИРУЕМ КАЖДОЕ ИЗМЕНЕНИЕ ОТДЕЛЬНО
+                if (changes.Count > 0)
+                {
+                    foreach (var change in changes)
+                    {
+                        DbHelper.LogChange("Проект", _project.ID_проекта, change, _currentUser.ID_сотрудника);
+                    }
+                }
 
                 MessageBox.Show($"Проект '{title}' успешно обновлен!",
                     "Успех",
@@ -237,10 +331,11 @@ namespace Командное_управление_проектами.Views
         // Обработчик кнопки "Добавить бюджет"
         private void AddBudget_Click(object sender, RoutedEventArgs e)
         {
-            var window = new AddBudgetWindow(_project.ID_проекта);
+            var window = new AddBudgetWindow(_project.ID_проекта, _currentUser);
             if (window.ShowDialog() == true)
             {
                 LoadBudget();
+                LoadHistory();
             }
         }
 
@@ -258,7 +353,14 @@ namespace Командное_управление_проектами.Views
                     {
                         // Удаляем через DbHelper
                         DbHelper.DeleteBudgetEntry(selectedEntry.ID_бюджета);
+
+                        // ✅ ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ
+                        DbHelper.LogChange("Проект", _project.ID_проекта,
+                            $"Удалена запись бюджета: \"{selectedEntry.Назначение}\" ({selectedEntry.Сумма:N2} руб.)",
+                            _currentUser.ID_сотрудника);
+
                         LoadBudget();
+                        LoadHistory();
                     }
                     catch (Exception ex)
                     {
@@ -287,9 +389,13 @@ namespace Командное_управление_проектами.Views
                 {
                     // Назначаем через DbHelper
                     DbHelper.AssignResourceToProject(_project.ID_проекта, selectedResource.ID_ресурса);
-                    DbHelper.LogChange("Ресурсы", _project.ID_проекта,
-                        $"Назначен ресурс: {selectedResource.Название}", _currentUser.ID_сотрудника);
+
+                    // ✅ ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ
+                    DbHelper.LogChange("Проект", _project.ID_проекта,
+                        $"Назначен ресурс: \"{selectedResource.Название}\"", _currentUser.ID_сотрудника);
+
                     LoadResources();
+                    LoadHistory();
                 }
                 catch (Exception ex)
                 {
@@ -317,9 +423,13 @@ namespace Командное_управление_проектами.Views
                 {
                     // Удаляем через DbHelper
                     DbHelper.RemoveResourceFromProject(_project.ID_проекта, selectedResource.ID_ресурса);
-                    DbHelper.LogChange("Ресурсы", _project.ID_проекта,
-                        $"Снят ресурс: {selectedResource.Название}", _currentUser.ID_сотрудника);
+
+                    // ✅ ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ
+                    DbHelper.LogChange("Проект", _project.ID_проекта,
+                        $"Снят ресурс: \"{selectedResource.Название}\"", _currentUser.ID_сотрудника);
+
                     LoadResources();
+                    LoadHistory();
                 }
                 catch (Exception ex)
                 {
@@ -338,13 +448,15 @@ namespace Командное_управление_проектами.Views
             }
         }
 
+
+
         // Обработка горячих клавиш
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
 
-            // Ctrl+S - сохранить изменения
-            if (e.Key == Key.S && Keyboard.Modifiers == ModifierKeys.Control)
+            // Ctrl+Enter - сохранить изменения
+            if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Control)
             {
                 Save_Click(this, new RoutedEventArgs());
             }

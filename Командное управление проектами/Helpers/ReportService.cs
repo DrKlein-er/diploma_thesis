@@ -196,7 +196,7 @@ namespace Командное_управление_проектами.Helpers
         // Расширенный экспорт проектов в Excel
         public static void ExportProjectsToExcel(string filePath, List<ProjectModel> projects)
         {
-            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+            ExcelPackage.License.SetNonCommercialPersonal("My Name");
 
             using (var package = new ExcelPackage())
             {
@@ -275,7 +275,7 @@ namespace Командное_управление_проектами.Helpers
         // Расширенный экспорт задач в Excel
         public static void ExportTasksToExcel(string filePath, List<TaskModel> tasks)
         {
-            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+            ExcelPackage.License.SetNonCommercialPersonal("My Name");
 
             using (var package = new ExcelPackage())
             {

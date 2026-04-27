@@ -17,41 +17,46 @@
     <SolidColorBrush x:Key="ReminderBrush" Color="#4CAF50"/>
     <SolidColorBrush x:Key="NoteBrush" Color="#9C27B0"/>
     <SolidColorBrush x:Key="TaskBrush" Color="#FF9800"/>
+    <SolidColorBrush x:Key="TextBrush" Color="#000000"/>
+    <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#F0F0F0"/>
 
-    <!-- Стили для кнопок меню -->
+    <!-- Стиль для кнопок меню -->
     <Style x:Key="MenuButtonStyle" TargetType="Button">
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="#000000"/>
-        <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Padding" Value="15,12"/>
-        <Setter Property="Margin" Value="5,3"/>
+        <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}"/>
         <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Padding" Value="15,10"/>
+        <Setter Property="Margin" Value="5"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border Background="{TemplateBinding Background}" 
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8"
-                            Padding="{TemplateBinding Padding}">
-                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                        VerticalAlignment="Center"
-                                        TextBlock.Foreground="{TemplateBinding Foreground}"/>
+                    <Border x:Name="border" 
+                        Background="{TemplateBinding Background}" 
+                        CornerRadius="6" 
+                        Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" 
+                                    VerticalAlignment="Center"/>
                     </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="#E8E8E8"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="#D0D0D0"/>
+                        </Trigger>
+                        <!-- Стиль для активной кнопки -->
+                        <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="Active">
+                            <Setter TargetName="border" Property="Background" Value="{StaticResource AccentBrush}"/>
+                            <Setter Property="Foreground" Value="White"/>
+                        </DataTrigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
-        <Style.Triggers>
-            <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Background" Value="{StaticResource HoverBrush}"/>
-            </Trigger>
-            <Trigger Property="IsPressed" Value="True">
-                <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
-                <Setter Property="Foreground" Value="White"/>
-            </Trigger>
-        </Style.Triggers>
     </Style>
 
     <!-- Стиль для активной кнопки меню -->
@@ -269,6 +274,257 @@
                   BlurRadius="10" 
                   ShadowDepth="2" 
                   Opacity="0.3"/>
+
+    <!-- ========== ГЛОБАЛЬНЫЕ СТИЛИ ДЛЯ ОКОН РЕДАКТИРОВАНИЯ ========== -->
+
+    <!-- Стиль для заголовков полей -->
+    <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}"/>
+        <Setter Property="Margin" Value="0,0,0,5"/>
+    </Style>
+
+    <!-- Стиль для обычных текстовых полей -->
+    <Style x:Key="InputTextBoxStyle" TargetType="TextBox">
+        <Setter Property="Height" Value="35"/>
+        <Setter Property="Padding" Value="10,5"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="Background" Value="{DynamicResource TextBoxBackgroundBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Margin" Value="0,0,0,15"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+
+    <!-- Стиль для многострочного текста -->
+    <Style x:Key="MultilineTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource InputTextBoxStyle}">
+        <Setter Property="Height" Value="80"/>
+        <Setter Property="AcceptsReturn" Value="True"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+        <Setter Property="VerticalContentAlignment" Value="Top"/>
+        <Setter Property="Padding" Value="10,8"/>
+    </Style>
+
+    <!-- Стиль для основных кнопок -->
+    <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="Padding" Value="25,10"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}" 
+                            CornerRadius="6" 
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" 
+                                        VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="#1976D2"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter Property="Background" Value="#0D47A1"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Стиль для кнопок со стрелками -->
+    <Style x:Key="ArrowButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="FontSize" Value="18"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}" 
+                            CornerRadius="6">
+                        <ContentPresenter HorizontalAlignment="Center" 
+                                        VerticalAlignment="Center"
+                                        Margin="5"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="#1976D2"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter Property="Background" Value="#0D47A1"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Стиль для TabItem -->
+    <Style TargetType="TabItem">
+        <Setter Property="Background" Value="{DynamicResource SecondaryBackgroundBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Padding" Value="15,8"/>
+        <Setter Property="Margin" Value="0,0,2,0"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabItem">
+                    <Border x:Name="Border"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="1,1,1,0"
+                            CornerRadius="6,6,0,0"
+                            Padding="{TemplateBinding Padding}"
+                            Margin="{TemplateBinding Margin}">
+                        <ContentPresenter ContentSource="Header"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        TextBlock.Foreground="{TemplateBinding Foreground}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource BackgroundBrush}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                            <Setter TargetName="Border" Property="BorderThickness" Value="1,1,1,0"/>
+                            <Setter Property="Panel.ZIndex" Value="100"/>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="False">
+                            <Setter TargetName="Border" Property="Opacity" Value="0.8"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Стиль для TabControl -->
+    <Style TargetType="TabControl">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabControl">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Панель вкладок -->
+                        <TabPanel x:Name="HeaderPanel"
+                                 Grid.Row="0"
+                                 IsItemsHost="True"
+                                 Background="Transparent"
+                                 Margin="5,0,0,0"/>
+
+                        <!-- Содержимое вкладки -->
+                        <Border x:Name="ContentPanel"
+                               Grid.Row="1"
+                               Background="{DynamicResource BackgroundBrush}"
+                               BorderBrush="{TemplateBinding BorderBrush}"
+                               BorderThickness="{TemplateBinding BorderThickness}"
+                               CornerRadius="0,6,6,6">
+                            <ContentPresenter ContentSource="SelectedContent"
+                                            Margin="0"/>
+                        </Border>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
+    <!-- Цвет фона чата -->
+    <SolidColorBrush x:Key="ChatBackgroundBrush" Color="#F5F5F5"/>
+
+    <!-- Цвет фона поля ввода -->
+    <SolidColorBrush x:Key="InputBackgroundBrush" Color="#FFFFFF"/>
+
+    <!-- Цвет сообщений текущего пользователя -->
+    <SolidColorBrush x:Key="MyMessageBackgroundBrush" Color="#0084FF"/>
+    <SolidColorBrush x:Key="MyMessageForegroundBrush" Color="#FFFFFF"/>
+
+    <!-- Цвет сообщений других пользователей -->
+    <SolidColorBrush x:Key="OtherMessageBackgroundBrush" Color="#E4E6EB"/>
+    <SolidColorBrush x:Key="OtherMessageForegroundBrush" Color="#050505"/>
+
+    <!-- Стиль для сообщения текущего пользователя (справа) -->
+    <Style x:Key="MyMessageBubbleStyle" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource MyMessageBackgroundBrush}"/>
+        <Setter Property="CornerRadius" Value="18,18,4,18"/>
+        <Setter Property="Padding" Value="12,8"/>
+        <Setter Property="Margin" Value="80,5,10,5"/>
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+        <Setter Property="MaxWidth" Value="400"/>
+        <!-- Анимация при наведении -->
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Opacity" Value="0.95"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Стиль для сообщения другого пользователя (слева) -->
+    <Style x:Key="OtherMessageBubbleStyle" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource OtherMessageBackgroundBrush}"/>
+        <Setter Property="CornerRadius" Value="18,18,18,4"/>
+        <Setter Property="Padding" Value="12,8"/>
+        <Setter Property="Margin" Value="10,5,80,5"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="MaxWidth" Value="400"/>
+    </Style>
+
+    <!-- Стиль для текста сообщения -->
+    <Style x:Key="MessageTextStyle" TargetType="TextBlock">
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="LineHeight" Value="20"/>
+    </Style>
+
+    <!-- Стиль для имени пользователя -->
+    <Style x:Key="MessageSenderNameStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Margin" Value="0,0,0,3"/>
+    </Style>
+
+    <!-- Стиль для времени сообщения -->
+    <Style x:Key="MessageTimeStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="Opacity" Value="0.7"/>
+        <Setter Property="Margin" Value="0,3,0,0"/>
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+    </Style>
+
+    <!-- Стиль для системных сообщений -->
+    <Style x:Key="SystemMessageStyle" TargetType="Border">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Padding" Value="10,5"/>
+        <Setter Property="Margin" Value="10,5"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+    </Style>
+
+    <Style x:Key="SystemMessageTextStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontStyle" Value="Italic"/>
+        <Setter Property="Opacity" Value="0.6"/>
+        <Setter Property="TextAlignment" Value="Center"/>
+        <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}"/>
+    </Style>
 
 
 </ResourceDictionary>

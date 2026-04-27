@@ -9,12 +9,14 @@ namespace Командное_управление_проектами.Views
     public partial class AddSubtaskWindow : Window
     {
         private readonly int _parentTaskId;
+        private readonly UserModel _currentUser;
 
         // Конструктор окна, принимает ID родительской задачи
-        public AddSubtaskWindow(int parentTaskId)
+        public AddSubtaskWindow(int parentTaskId, UserModel currentUser = null)
         {
             InitializeComponent();
             _parentTaskId = parentTaskId;
+            _currentUser = currentUser;
 
             // Применяем текущую тему приложения
             ApplyTheme();
@@ -119,6 +121,13 @@ namespace Командное_управление_проектами.Views
             {
                 // Добавление подзадачи в базу данных
                 DbHelper.AddSubtask(newSubtask);
+
+                // ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ
+                if (_currentUser != null)
+                {
+                    DbHelper.LogChange("Задача", _parentTaskId,
+                        $"Добавлена подзадача: \"{title}\"", _currentUser.ID_сотрудника);
+                }
 
                 // Формируем информацию о датах для сообщения
                 string dateInfo = "";

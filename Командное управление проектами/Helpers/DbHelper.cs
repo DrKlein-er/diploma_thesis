@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
+using System.Windows;
 using System.Windows.Media;
 using Командное_управление_проектами.Models;
 
@@ -227,15 +228,16 @@ namespace Командное_управление_проектами.Helpers
         }
 
         // Добавление нового проекта
-        public static void AddProject(ProjectModel project)
+        public static int AddProject(ProjectModel project)
         {
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
                 string query = @"
-                    INSERT INTO Проекты 
-                    (Название_проекта, Описание, Дата_начала, Дата_завершения, Статус, ID_ответственного)
-                    VALUES (@name, @desc, @start, @end, @status, @empId)";
+                        INSERT INTO Проекты 
+                        (Название_проекта, Описание, Дата_начала, Дата_завершения, Статус, ID_ответственного)
+                        VALUES (@name, @desc, @start, @end, @status, @empId);
+                        SELECT CAST(SCOPE_IDENTITY() AS INT);";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -246,7 +248,8 @@ namespace Командное_управление_проектами.Helpers
                     cmd.Parameters.AddWithValue("@status", project.Статус);
                     cmd.Parameters.AddWithValue("@empId", project.ID_ответственного.HasValue ? (object)project.ID_ответственного.Value : DBNull.Value);
 
-                    cmd.ExecuteNonQuery();
+                    // Возвращаем ID созданного проекта
+                    return (int)cmd.ExecuteScalar();
                 }
             }
         }
@@ -436,6 +439,91 @@ namespace Командное_управление_проектами.Helpers
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        // Получение ID проекта по ID задачи
+        public static int? GetProjectIdByTaskId(int taskId)
+        {
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(connectionString))
+                {
+                    conn.Open();
+                    string query = "SELECT ID_проекта FROM Задачи WHERE ID_задачи = @taskId";
+                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@taskId", taskId);
+                        var result = cmd.ExecuteScalar();
+                        return result != null ? Convert.ToInt32(result) : (int?)null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Ошибка при получении ID проекта: {ex.Message}");
+            }
+        }
+
+        // Обновление задачи
+        public static void UpdateTask(TaskModel task, int projectId)
+        {
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            {
+                conn.Open();
+                string query = @"
+            UPDATE Задачи 
+            SET Название_задачи = @title, 
+                Описание = @desc, 
+                Приоритет = @priority, 
+                Статус = @status, 
+                Дата_начала = @startDate,
+                Дата_завершения = @endDate,
+                ID_проекта = @projectId, 
+                ID_ответственного = @empId
+            WHERE ID_задачи = @id";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@title", task.Название_задачи);
+                    cmd.Parameters.AddWithValue("@desc", string.IsNullOrEmpty(task.Описание) ? (object)DBNull.Value : task.Описание);
+                    cmd.Parameters.AddWithValue("@priority", string.IsNullOrEmpty(task.Приоритет) ? (object)DBNull.Value : task.Приоритет);
+                    cmd.Parameters.AddWithValue("@status", task.Статус);
+                    cmd.Parameters.AddWithValue("@startDate", task.Дата_начала.HasValue ? (object)task.Дата_начала.Value : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@endDate", task.Дата_завершения.HasValue ? (object)task.Дата_завершения.Value : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@projectId", projectId);
+                    cmd.Parameters.AddWithValue("@empId", task.ID_ответственного.HasValue ? (object)task.ID_ответственного.Value : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@id", task.ID_задачи);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        // Добавление новой задачи в базу данных
+        public static int AddTask(TaskModel task, int projectId)
+        {
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            {
+                conn.Open();
+                string query = @"
+            INSERT INTO Задачи 
+            (Название_задачи, Описание, Приоритет, Статус, Дата_начала, Дата_завершения, ID_проекта, ID_ответственного)
+            VALUES (@title, @desc, @priority, @status, @startDate, @endDate, @projectId, @empId);
+            SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@title", task.Название_задачи);
+                    cmd.Parameters.AddWithValue("@desc", string.IsNullOrEmpty(task.Описание) ? (object)DBNull.Value : task.Описание);
+                    cmd.Parameters.AddWithValue("@priority", string.IsNullOrEmpty(task.Приоритет) ? (object)DBNull.Value : task.Приоритет);
+                    cmd.Parameters.AddWithValue("@status", task.Статус);
+                    cmd.Parameters.AddWithValue("@startDate", task.Дата_начала.HasValue ? (object)task.Дата_начала.Value : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@endDate", task.Дата_завершения.HasValue ? (object)task.Дата_завершения.Value : DBNull.Value);
+                    cmd.Parameters.AddWithValue("@projectId", projectId);
+                    cmd.Parameters.AddWithValue("@empId", task.ID_ответственного.HasValue ? (object)task.ID_ответственного.Value : DBNull.Value);
+
+                    return (int)cmd.ExecuteScalar();
                 }
             }
         }
@@ -1293,7 +1381,7 @@ namespace Командное_управление_проектами.Helpers
             {
                 conn.Open();
                 var query = @"INSERT INTO История_Изменений (Сущность, ID_объекта, Действие, ID_сотрудника)
-                              VALUES (@entity, @objectId, @action, @employeeId)";
+                      VALUES (@entity, @objectId, @action, @employeeId)";
                 using (var cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@entity", entity);
@@ -1305,47 +1393,161 @@ namespace Командное_управление_проектами.Helpers
             }
         }
 
-        // Получение истории изменений
-        public static List<HistoryModel> GetHistory(string entity, int objectId)
+        // Получает историю изменений для указанного объекта
+        // Список записей истории изменений
+        public static List<HistoryModel> GetHistory(string entityType, int entityId)
         {
-            var historyLogs = new List<HistoryModel>();
-            using (var conn = new SqlConnection(connectionString))
+            List<HistoryModel> historyList = new List<HistoryModel>();
+
+            try
             {
-                conn.Open();
-                var query = @"SELECT 
-                        h.ID_изменения, 
-                        h.Сущность, 
-                        h.ID_объекта, 
-                        h.Действие, 
-                        h.Дата_изменения, 
-                        h.ID_сотрудника,
-                        s.Фамилия + ' ' + s.Имя + ' ' + ISNULL(s.Отчество, '') AS ФИО_сотрудника
-                      FROM История_Изменений h
-                      JOIN Сотрудники s ON h.ID_сотрудника = s.ID_сотрудника
-                      WHERE h.ID_объекта = @objectId
-                      ORDER BY h.Дата_изменения DESC";
-                using (var cmd = new SqlCommand(query, conn))
+                using (SqlConnection conn = new SqlConnection(connectionString))
                 {
-                    cmd.Parameters.AddWithValue("@objectId", objectId);
-                    using (var reader = cmd.ExecuteReader())
+                    conn.Open();
+
+                    string query = @"
+                SELECT 
+                    h.Дата_изменения,
+                    h.Действие,
+                    ISNULL(с.Фамилия + ' ' + с.Имя + ' ' + ISNULL(с.Отчество, ''), 'Неизвестно') AS Имя_сотрудника
+                FROM История_Изменений h
+                LEFT JOIN Сотрудники с ON h.ID_сотрудника = с.ID_сотрудника
+                WHERE h.Сущность = @EntityType 
+                  AND h.ID_объекта = @EntityId
+                ORDER BY h.Дата_изменения DESC";
+
+                    using (SqlCommand cmd = new SqlCommand(query, conn))
                     {
-                        while (reader.Read())
+                        cmd.Parameters.AddWithValue("@EntityType", entityType);
+                        cmd.Parameters.AddWithValue("@EntityId", entityId);
+
+                        using (SqlDataReader reader = cmd.ExecuteReader())
                         {
-                            historyLogs.Add(new HistoryModel
+                            while (reader.Read())
                             {
-                                ID_изменения = reader.GetInt32(0),
-                                Сущность = reader.GetString(1),
-                                ID_объекта = reader.GetInt32(2),
-                                Действие = reader.GetString(3),
-                                Дата_изменения = reader.GetDateTime(4),
-                                ID_сотрудника = reader.GetInt32(5),
-                                ФИО_сотрудника = reader.GetString(6)
-                            });
+                                historyList.Add(new HistoryModel
+                                {
+                                    Дата_изменения = reader.GetDateTime(0),
+                                    Действие = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                                    ФИО_сотрудника = reader.GetString(2)
+                                });
+                            }
                         }
                     }
                 }
             }
-            return historyLogs;
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при загрузке истории изменений:\n{ex.Message}",
+                    "Ошибка",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+
+            return historyList;
+        }
+
+        // Получает всю историю изменений с возможностью фильтрации
+        public static List<HistoryModel> GetAllHistory(string entityType = null, string employeeName = null,
+    DateTime? startDate = null, DateTime? endDate = null)
+        {
+            List<HistoryModel> historyList = new List<HistoryModel>();
+
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    // Базовый запрос
+                    string query = @"
+                SELECT 
+                    h.ID_изменения,
+                    h.Сущность,
+                    h.ID_объекта,
+                    h.Действие,
+                    h.Дата_изменения,
+                    h.ID_сотрудника,
+                    ISNULL(с.Фамилия + ' ' + с.Имя + ' ' + ISNULL(с.Отчество, ''), 'Неизвестно') AS ФИО_сотрудника
+                FROM История_Изменений h
+                LEFT JOIN Сотрудники с ON h.ID_сотрудника = с.ID_сотрудника
+                WHERE 1=1";
+
+                    // Добавляем фильтры
+                    if (!string.IsNullOrEmpty(entityType))
+                    {
+                        query += " AND h.Сущность = @EntityType";
+                    }
+
+                    if (!string.IsNullOrEmpty(employeeName))
+                    {
+                        query += " AND (с.Фамилия LIKE @EmployeeName OR с.Имя LIKE @EmployeeName OR с.Отчество LIKE @EmployeeName)";
+                    }
+
+                    if (startDate.HasValue)
+                    {
+                        query += " AND h.Дата_изменения >= @StartDate";
+                    }
+
+                    if (endDate.HasValue)
+                    {
+                        query += " AND h.Дата_изменения <= @EndDate";
+                    }
+
+                    query += " ORDER BY h.Дата_изменения DESC";
+
+                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    {
+                        // Добавляем параметры
+                        if (!string.IsNullOrEmpty(entityType))
+                        {
+                            cmd.Parameters.AddWithValue("@EntityType", entityType);
+                        }
+
+                        if (!string.IsNullOrEmpty(employeeName))
+                        {
+                            cmd.Parameters.AddWithValue("@EmployeeName", "%" + employeeName + "%");
+                        }
+
+                        if (startDate.HasValue)
+                        {
+                            cmd.Parameters.AddWithValue("@StartDate", startDate.Value.Date);
+                        }
+
+                        if (endDate.HasValue)
+                        {
+                            // Устанавливаем конец дня для endDate
+                            cmd.Parameters.AddWithValue("@EndDate", endDate.Value.Date.AddDays(1).AddSeconds(-1));
+                        }
+
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                historyList.Add(new HistoryModel
+                                {
+                                    ID_изменения = reader.GetInt32(0),
+                                    Сущность = reader.GetString(1),
+                                    ID_объекта = reader.GetInt32(2),
+                                    Действие = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                                    Дата_изменения = reader.GetDateTime(4),
+                                    ID_сотрудника = reader.GetInt32(5),
+                                    ФИО_сотрудника = reader.GetString(6)
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при загрузке истории изменений:\n{ex.Message}",
+                    "Ошибка",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+
+            return historyList;
         }
 
         // ========================== ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ ДЛЯ ПРОФИЛЯ ==========================

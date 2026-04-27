@@ -1,25 +1,23 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Media;
-using System.Data;
-using Командное_управление_проектами.Models;
-using Командное_управление_проектами.Helpers;
-using Командное_управление_проектами.Views;
-using System.Net.Sockets;
-using System.Threading;
-using LiveCharts;
+﻿using LiveCharts;
 using LiveCharts.Wpf;
+using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Win32;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
-using System.IO;
-using Microsoft.Win32;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using Командное_управление_проектами.Helpers;
+using Командное_управление_проектами.Models;
+using Командное_управление_проектами.Views;
 
-using Color = System.Windows.Media.Color;
 using Border = System.Windows.Controls.Border;
+using Color = System.Windows.Media.Color;
 
 
 namespace Командное_управление_проектами
@@ -33,13 +31,13 @@ namespace Командное_управление_проектами
         private List<TaskModel> tasks = new List<TaskModel>(); 
         private List<ProjectModel> _projects = new List<ProjectModel>(); 
         private List<TaskModel> _allTasks = new List<TaskModel>();
-        private TcpClient chatClient;
-        private NetworkStream chatStream;
-        private Thread chatReceiveThread;
-        private string chatUserName;
         private NotificationService _notificationService;
         private Button _activeMenuButton = null;
         private DateTime _currentMonth;
+        private HubConnection _hubConnection;
+        private System.Windows.Threading.DispatcherTimer _typingTimer;
+        private DateTime _lastTypingNotification = DateTime.MinValue;
+        private List<HistoryModel> _allHistory = new List<HistoryModel>();
 
         public string _sessionId;
         public MainWindow(UserModel user)
@@ -69,23 +67,10 @@ namespace Командное_управление_проектами
                 RefreshMenuButtonStyles();
             }), System.Windows.Threading.DispatcherPriority.Loaded);
 
-
-
-
-
-            // Тестовое уведомление (удалите после проверки)
-            _notificationService.AddNotification(
-                "⚠️ Тестовое уведомление",
-                "Это пример высокоприоритетного уведомления",
-                "Задача",
-                priority: "Высокий"
-            );
-
-
-
-
-
-
+            // Сначала скрываем все ограниченные кнопки
+            ReportsButton.Visibility = Visibility.Collapsed;
+            UsersButton.Visibility = Visibility.Collapsed;
+            HistoryButton.Visibility = Visibility.Collapsed;
 
             // Настройка видимости статических кнопок меню на основе роли
             if (PermissionHelper.HasPermission(_currentUser, "REPORTS_VIEW"))
@@ -95,6 +80,11 @@ namespace Командное_управление_проектами
             if (PermissionHelper.HasPermission(_currentUser, "USER_MANAGE"))
             {
                 UsersButton.Visibility = Visibility.Visible;
+            }
+            // Показываем кнопку "История изменений" только для администраторов
+            if (PermissionHelper.HasPermission(_currentUser, "ADMIN_FULL"))
+            {
+                HistoryButton.Visibility = Visibility.Visible;
             }
 
             // Инициализация календаря и подключения к чату
@@ -140,6 +130,7 @@ namespace Командное_управление_проектами
             ReportPanel.Visibility = Visibility.Collapsed;
             UsersPanel.Visibility = Visibility.Collapsed;
             NotificationsPanel.Visibility = Visibility.Collapsed;
+            HistoryPanel.Visibility = Visibility.Collapsed;
         }
 
         // Добавьте этот метод
@@ -174,10 +165,16 @@ namespace Командное_управление_проектами
             ProjectsPanel.Visibility = Visibility.Visible;
             ApplyProjectFilters();
 
+            // Логика прав доступа:
             bool canManageProjects = PermissionHelper.HasPermission(_currentUser, "PROJECT_CREATE");
-            AddProjectBtn.Visibility = canManageProjects ? Visibility.Visible : Visibility.Collapsed;
-            EditProjectBtn.Visibility = canManageProjects ? Visibility.Visible : Visibility.Collapsed;
 
+            // Добавление проекта - только по правам (например, Админ/Менеджер)
+            AddProjectBtn.Visibility = canManageProjects ? Visibility.Visible : Visibility.Collapsed;
+
+            // ИЗМЕНЕНИЕ: Редактирование проекта теперь доступно ВСЕМ пользователям
+            EditProjectBtn.Visibility = Visibility.Visible;
+
+            // Удаление - только по правам
             bool canDeleteProjects = PermissionHelper.HasPermission(_currentUser, "PROJECT_DELETE");
             DeleteProjectBtn.Visibility = canDeleteProjects ? Visibility.Visible : Visibility.Collapsed;
 
@@ -300,8 +297,21 @@ namespace Командное_управление_проектами
             _allTasks = DbHelper.GetAllTasks();
             TasksGrid.ItemsSource = _allTasks;
 
+            // Логика прав доступа:
             bool canManageTasks = PermissionHelper.HasPermission(_currentUser, "TASK_CREATE");
-            AddTaskBtn.Visibility = canManageTasks ? Visibility.Visible : Visibility.Collapsed;
+
+            // ИЗМЕНЕНИЕ: Дополнительная проверка - если роль "Пользователь", скрываем кнопку добавления
+            // Даже если в БД есть право TASK_CREATE, этот код принудительно скроет кнопку для обычных пользователей
+            if (_currentUser.Роль == "Пользователь")
+            {
+                AddTaskBtn.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                AddTaskBtn.Visibility = canManageTasks ? Visibility.Visible : Visibility.Collapsed;
+            }
+
+            // Кнопку редактирования оставляем как есть (или тоже можно открыть для всех, если нужно)
             EditTaskBtn.Visibility = canManageTasks ? Visibility.Visible : Visibility.Collapsed;
 
             SetActiveMenuButton(TasksButton);
@@ -356,9 +366,9 @@ namespace Командное_управление_проектами
 
         private void AddTask_Click(object sender, RoutedEventArgs e)
         {
-            var win = new Views.AddTaskWindow();
-            win.ShowDialog();
-            ShowTasks(sender, e);
+            var window = new Views.AddTaskWindow(_currentUser); // Передаём текущего пользователя
+            window.ShowDialog();
+            ApplyTaskFilters(); // Обновляем список задач
         }
 
         // Инициализация и обновление календаря
@@ -891,23 +901,7 @@ namespace Командное_управление_проектами
 
             ResourcesUsageGrid.ItemsSource = resourcesWithUsage;
 
-            // 6. Просроченные задачи
-            var overdueTasks = tasks
-                .Where(t => t.Дата_завершения.HasValue &&
-                            t.Дата_завершения.Value < DateTime.Now &&
-                            t.Статус != "Завершена")
-                .Select(t => new
-                {
-                    t.ID_задачи,
-                    t.Название_задачи,
-                    t.Название_проекта,
-                    t.Ответственный,
-                    ДнейПросрочено = (DateTime.Now - t.Дата_завершения.Value).Days
-                })
-                .OrderByDescending(t => t.ДнейПросрочено)
-                .ToList();
-
-            OverdueTasksGrid.ItemsSource = overdueTasks;
+        
         }
 
         private int GetResourceUsageCount(int resourceId)
@@ -964,6 +958,8 @@ namespace Командное_управление_проектами
         // Новый экспорт в Excel
         private void ExportToExcelNew_Click(object sender, RoutedEventArgs e)
         {
+            ExcelPackage.License.SetNonCommercialPersonal("My Name");
+
             var selectedType = (ExportTypeComboBox.SelectedItem as ComboBoxItem)?.Content.ToString();
 
             var saveFileDialog = new SaveFileDialog
@@ -993,7 +989,11 @@ namespace Командное_управление_проектами
                     if (MessageBox.Show("Открыть созданный файл?", "Открыть",
                         MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                     {
-                        System.Diagnostics.Process.Start(saveFileDialog.FileName);
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = saveFileDialog.FileName,
+                            UseShellExecute = true
+                        });
                     }
                 }
                 catch (Exception ex)
@@ -1013,88 +1013,450 @@ namespace Командное_управление_проектами
             SetActiveMenuButton(ChatButton);
         }
 
-        // Подключение к серверу чата
-        private void ConnectToChat()
+        // Подключение к серверу чата через SignalR с улучшенным UI
+        private async void ConnectToChat()
         {
-            if (chatClient != null && chatClient.Connected)
+            if (_hubConnection != null && _hubConnection.State == HubConnectionState.Connected)
                 return;
 
-            chatUserName = _currentUser.Имя;
             try
             {
-                chatClient = new TcpClient("127.0.0.1", 8888);
-                chatStream = chatClient.GetStream();
+                // Обновляем статус
+                ChatStatusText.Text = "Подключение...";
+                ConnectionIndicator.Fill = new SolidColorBrush(Colors.Orange);
 
-                chatReceiveThread = new Thread(ReceiveChatMessages);
-                chatReceiveThread.IsBackground = true;
-                chatReceiveThread.Start();
+                // Создаем подключение
+                _hubConnection = new HubConnectionBuilder()
+                    .WithUrl("http://localhost:5000/chatHub")
+                    .WithAutomaticReconnect()
+                    .Build();
 
-                ChatTextBox.Text += $"{GetTimestamp()} Подключен к серверу\n";
+                // Обработчик получения сообщений
+                _hubConnection.On<int, string, string, DateTime>("ReceiveMessage",
+                    (userId, userName, message, timestamp) =>
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            // Проверяем, не системное ли это сообщение об удалении
+                            if (userName == "Система" && message.Contains("удалил"))
+                            {
+                                AddSystemMessage(message);
+                            }
+                            else
+                            {
+                                AddMessageBubble(userId, userName, message, timestamp);
+                                ChatHelper.SaveMessage(null, userId, userName, message);
+                            }
+
+                            ChatScrollViewer.ScrollToBottom();
+                        });
+                    });
+
+                // Обработчик переподключения
+                _hubConnection.Reconnected += async (connectionId) =>
+                {
+                    await Dispatcher.InvokeAsync(() =>
+                    {
+                        AddSystemMessage("Переподключено к серверу");
+                        ChatStatusText.Text = "Подключено";
+                        ConnectionIndicator.Fill = new SolidColorBrush(Colors.LimeGreen);
+                        SendButton.IsEnabled = true;
+                    });
+                };
+
+                // Обработчик разрыва соединения
+                _hubConnection.Closed += async (error) =>
+                {
+                    await Dispatcher.InvokeAsync(() =>
+                    {
+                        AddSystemMessage("Соединение разорвано. Попытка переподключения...");
+                        ChatStatusText.Text = "Отключено";
+                        ConnectionIndicator.Fill = new SolidColorBrush(Colors.Red);
+                        SendButton.IsEnabled = false;
+                    });
+                };
+
+                // Запускаем подключение
+                await _hubConnection.StartAsync();
+
+                // Успешное подключение
+                ChatStatusText.Text = "Подключено";
+                ConnectionIndicator.Fill = new SolidColorBrush(Colors.LimeGreen);
                 SendButton.IsEnabled = true;
+
+                AddSystemMessage("Подключено к серверу чата");
+                LoadChatHistory();
             }
-            catch
+            catch (Exception ex)
             {
-                MessageBox.Show("Не удалось подключиться к серверу чата.");
+                ChatStatusText.Text = "Ошибка подключения";
+                ConnectionIndicator.Fill = new SolidColorBrush(Colors.Red);
+
+                MessageBox.Show(
+                    $"Не удалось подключиться к серверу чата.\n\nОшибка: {ex.Message}",
+                    "Ошибка подключения",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+
+                SendButton.IsEnabled = false;
             }
         }
 
-        private void SendButton_Click(object sender, RoutedEventArgs e)
+        // Добавление сообщения в чат в виде пузырька
+        private void AddMessageBubble(int userId, string userName, string message, DateTime timestamp)
+        {
+            // Определяем, это наше сообщение или чужое
+            bool isMyMessage = userId == _currentUser.ID_сотрудника;
+
+            // Создаём контейнер для сообщения
+            var messageContainer = new StackPanel
+            {
+                Margin = new Thickness(0, 5, 0, 5),
+                Tag = new { UserId = userId, MessageId = timestamp.Ticks } // Сохраняем ID для удаления
+            };
+
+            // Создаём пузырёк сообщения
+            var messageBubble = new Border
+            {
+                Style = isMyMessage
+                    ? (Style)FindResource("MyMessageBubbleStyle")
+                    : (Style)FindResource("OtherMessageBubbleStyle"),
+                HorizontalAlignment = isMyMessage ? HorizontalAlignment.Right : HorizontalAlignment.Left
+            };
+
+            // Содержимое пузырька
+            var bubbleContent = new StackPanel();
+
+            // Имя отправителя (только для чужих сообщений)
+            if (!isMyMessage)
+            {
+                var senderName = new TextBlock
+                {
+                    Text = userName,
+                    Style = (Style)FindResource("MessageSenderNameStyle"),
+                    Foreground = (SolidColorBrush)FindResource("OtherMessageForegroundBrush")
+                };
+                bubbleContent.Children.Add(senderName);
+            }
+
+            // Текст сообщения
+            var messageText = new TextBlock
+            {
+                Text = message,
+                Style = (Style)FindResource("MessageTextStyle"),
+                Foreground = isMyMessage
+                    ? (SolidColorBrush)FindResource("MyMessageForegroundBrush")
+                    : (SolidColorBrush)FindResource("OtherMessageForegroundBrush")
+            };
+            bubbleContent.Children.Add(messageText);
+
+            // Время отправки
+            var timeText = new TextBlock
+            {
+                Text = timestamp.ToString("HH:mm"),
+                Style = (Style)FindResource("MessageTimeStyle"),
+                Foreground = isMyMessage
+                    ? (SolidColorBrush)FindResource("MyMessageForegroundBrush")
+                    : (SolidColorBrush)FindResource("OtherMessageForegroundBrush")
+            };
+            bubbleContent.Children.Add(timeText);
+
+            messageBubble.Child = bubbleContent;
+
+            // ========== ДОБАВЛЯЕМ КОНТЕКСТНОЕ МЕНЮ ДЛЯ СВОИХ СООБЩЕНИЙ ==========
+            if (isMyMessage)
+            {
+                var contextMenu = new ContextMenu();
+
+                // Пункт "Удалить"
+                var deleteMenuItem = new MenuItem
+                {
+                    Header = "🗑️ Удалить сообщение",
+                    Tag = timestamp.Ticks // Сохраняем ID сообщения
+                };
+
+                deleteMenuItem.Click += async (s, e) =>
+                {
+                    var result = MessageBox.Show(
+                        "Вы уверены, что хотите удалить это сообщение?",
+                        "Удаление сообщения",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Question);
+
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        try
+                        {
+                            // Удаляем из UI
+                            ChatMessagesControl.Items.Remove(messageContainer);
+
+                            // Удаляем из БД
+                            long messageId = (long)deleteMenuItem.Tag;
+                            ChatHelper.DeleteMessage(messageId);
+
+                            // Отправляем уведомление другим пользователям через SignalR
+                            if (_hubConnection != null && _hubConnection.State == HubConnectionState.Connected)
+                            {
+                                await _hubConnection.InvokeAsync("SendMessage",
+                                    _currentUser.ID_сотрудника,
+                                    "Система",
+                                    $"[{_currentUser.Имя} удалил(а) сообщение]");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show($"Ошибка удаления сообщения: {ex.Message}",
+                                "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                        }
+                    }
+                };
+
+                // Пункт "Скопировать текст"
+                var copyMenuItem = new MenuItem
+                {
+                    Header = "📋 Скопировать текст"
+                };
+                copyMenuItem.Click += (s, e) =>
+                {
+                    try
+                    {
+                        Clipboard.SetText(message);
+                        // Можно добавить toast уведомление
+                    }
+                    catch { }
+                };
+
+                contextMenu.Items.Add(deleteMenuItem);
+                contextMenu.Items.Add(new System.Windows.Controls.Separator());
+                contextMenu.Items.Add(copyMenuItem);
+
+                messageBubble.ContextMenu = contextMenu;
+                messageBubble.Cursor = Cursors.Hand;
+            }
+
+            messageContainer.Children.Add(messageBubble);
+
+            // Добавляем в чат
+            ChatMessagesControl.Items.Add(messageContainer);
+        }
+
+        // Добавление системного сообщения
+        private void AddSystemMessage(string message)
+        {
+            var systemBubble = new Border
+            {
+                Style = (Style)FindResource("SystemMessageStyle")
+            };
+
+            var systemText = new TextBlock
+            {
+                Text = message,
+                Style = (Style)FindResource("SystemMessageTextStyle")
+            };
+
+            systemBubble.Child = systemText;
+            ChatMessagesControl.Items.Add(systemBubble);
+        }
+
+        // Загрузка истории сообщений из БД
+
+        private void LoadChatHistory()
+        {
+            try
+            {
+                var messages = ChatHelper.GetChatHistory(null, 50);
+
+                if (messages.Count > 0)
+                {
+                    ChatMessagesControl.Items.Clear();
+                    AddSystemMessage($"Загружена история: {messages.Count} сообщений");
+
+                    foreach (var msg in messages)
+                    {
+                        AddMessageBubble(
+                            msg.ID_отправителя,
+                            msg.Имя_отправителя,
+                            msg.Текст_сообщения,
+                            msg.Дата_отправки);
+                    }
+
+                    ChatScrollViewer.ScrollToBottom();
+                }
+                else
+                {
+                    AddSystemMessage("История сообщений пуста. Начните общение!");
+                }
+            }
+            catch (Exception ex)
+            {
+                AddSystemMessage($"Ошибка загрузки истории: {ex.Message}");
+            }
+        }
+
+        // Отправка сообщения
+
+        private async void SendButton_Click(object sender, RoutedEventArgs e)
         {
             string message = MessageTextBox.Text.Trim();
-            if (!string.IsNullOrEmpty(message))
+
+            if (string.IsNullOrEmpty(message))
+                return;
+
+            if (_hubConnection == null || _hubConnection.State != HubConnectionState.Connected)
             {
-                string formattedMessage = $"{GetTimestamp()} {chatUserName}: {message}";
-                SendChatMessage(formattedMessage);
+                MessageBox.Show("Нет подключения к серверу чата.", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                // Отправляем через SignalR
+                await _hubConnection.InvokeAsync("SendMessage",
+                    _currentUser.ID_сотрудника,
+                    _currentUser.Имя,
+                    message);
+
+                // Очищаем поле
                 MessageTextBox.Clear();
+                MessageTextBox.Focus();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка отправки: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        private void ReceiveChatMessages()
+        // Отправка по нажатию Enter
+        private void MessageTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter && !string.IsNullOrWhiteSpace(MessageTextBox.Text))
+            {
+                // Если нажат Shift+Enter - перенос строки
+                if (Keyboard.Modifiers == ModifierKeys.Shift)
+                {
+                    return; // Разрешаем перенос
+                }
+
+                // Иначе отправляем
+                SendButton_Click(sender, e);
+                e.Handled = true;
+            }
+        }
+
+        // Отслеживание набора текста для индикатора
+
+        private void MessageTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            // Можно добавить логику отправки уведомления "печатает..."
+            // Но для простоты пока пропустим
+        }
+
+        // Добавление эмодзи в сообщение
+        private void EmojiButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Простой набор эмодзи
+            string[] emojis = { "😊", "😂", "❤️", "👍", "🎉", "🔥", "✅", "❌", "💯", "👀" };
+
+            // Создаём контекстное меню с эмодзи
+            var contextMenu = new ContextMenu();
+
+            foreach (var emoji in emojis)
+            {
+                var menuItem = new MenuItem
+                {
+                    Header = emoji,
+                    FontSize = 20
+                };
+                menuItem.Click += (s, args) =>
+                {
+                    MessageTextBox.Text += emoji;
+                    MessageTextBox.Focus();
+                    MessageTextBox.CaretIndex = MessageTextBox.Text.Length;
+                };
+                contextMenu.Items.Add(menuItem);
+            }
+
+            contextMenu.PlacementTarget = EmojiButton;
+            contextMenu.IsOpen = true;
+        }
+        // Обработчик получения фокуса полем ввода
+        private void MessageTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            // Находим Border, который оборачивает TextBox
+            var textBox = sender as TextBox;
+            if (textBox != null)
+            {
+                var border = FindParent<Border>(textBox);
+                if (border != null && border.Name == "MessageInputBorder")
+                {
+                    // Яркая синяя рамка при фокусе
+                    border.BorderBrush = (SolidColorBrush)FindResource("AccentBrush");
+                    border.BorderThickness = new Thickness(2);
+
+                    // Опционально: лёгкое изменение фона
+                    var inputBrush = (SolidColorBrush)FindResource("InputBackgroundBrush");
+                    var lighterBrush = new SolidColorBrush(
+                        Color.FromArgb(
+                            inputBrush.Color.A,
+                            (byte)Math.Min(255, inputBrush.Color.R + 10),
+                            (byte)Math.Min(255, inputBrush.Color.G + 10),
+                            (byte)Math.Min(255, inputBrush.Color.B + 10)
+                        )
+                    );
+                    border.Background = lighterBrush;
+                }
+            }
+        }
+        // Обработчик потери фокуса полем ввода
+        private void MessageTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            // Находим Border
+            var textBox = sender as TextBox;
+            if (textBox != null)
+            {
+                var border = FindParent<Border>(textBox);
+                if (border != null && border.Name == "MessageInputBorder")
+                {
+                    // Возвращаем обычную рамку
+                    border.BorderBrush = (SolidColorBrush)FindResource("BorderBrush");
+                    border.BorderThickness = new Thickness(2);
+
+                    // Возвращаем обычный фон
+                    border.Background = (SolidColorBrush)FindResource("InputBackgroundBrush");
+                }
+            }
+        }
+        // Вспомогательный метод для поиска родительского элемента
+        private T FindParent<T>(DependencyObject child) where T : DependencyObject
+        {
+            DependencyObject parentObject = VisualTreeHelper.GetParent(child);
+
+            if (parentObject == null)
+                return null;
+
+            if (parentObject is T parent)
+                return parent;
+
+            return FindParent<T>(parentObject);
+        }
+
+        // Отключение от чата
+        private async void DisconnectChat()
         {
             try
             {
-                while (true)
+                if (_hubConnection != null && _hubConnection.State == HubConnectionState.Connected)
                 {
-                    byte[] buffer = new byte[1024];
-                    int byteCount = chatStream.Read(buffer, 0, buffer.Length);
-                    if (byteCount == 0) break;
-                    string message = Encoding.UTF8.GetString(buffer, 0, byteCount);
-                    Dispatcher.Invoke(() => { ChatTextBox.Text += message + "\n"; });
+                    await _hubConnection.StopAsync();
+                    await _hubConnection.DisposeAsync();
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                Console.WriteLine($"Ошибка отключения: {ex.Message}");
             }
-        }
-
-        private void SendChatMessage(string message)
-        {
-            if (chatStream != null)
-            {
-                byte[] data = Encoding.UTF8.GetBytes(message);
-                chatStream.Write(data, 0, data.Length);
-            }
-        }
-
-        private void DisconnectChat()
-        {
-            try
-            {
-                if (chatStream != null)
-                {
-                    SendChatMessage($"{GetTimestamp()} {chatUserName} покинул чат");
-                    chatStream.Close();
-                    chatClient.Close();
-                    if (chatReceiveThread != null && chatReceiveThread.IsAlive)
-                        chatReceiveThread.Join();
-                }
-            }
-            catch { }
-        }
-
-        private string GetTimestamp()
-        {
-            return DateTime.Now.ToString("HH:mm:ss");
         }
 
         private void Logout_Click(object sender, RoutedEventArgs e)
@@ -1484,5 +1846,102 @@ namespace Командное_управление_проектами
                 System.Diagnostics.Debug.WriteLine($"Ошибка обновления стилей меню: {ex.Message}");
             }
         }
+        // Отображение панели "История изменений"
+        private void ShowHistory(object sender, RoutedEventArgs e)
+        {
+            HideAllPanels();
+            HistoryPanel.Visibility = Visibility.Visible;
+            LoadHistoryData();
+            SetActiveMenuButton(HistoryButton);
+        }
+        // Загрузка данных истории изменений
+        private void LoadHistoryData()
+        {
+            try
+            {
+                _allHistory = DbHelper.GetAllHistory();
+
+                // Проверяем, что элементы инициализированы
+                if (HistoryGrid != null && TotalHistoryCountText != null)
+                {
+                    ApplyHistoryFilters();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при загрузке истории:\n{ex.Message}",
+                    "Ошибка",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        // Применение фильтров к истории изменений
+        private void ApplyHistoryFilters()
+        {
+            // Проверка на инициализацию элементов
+            if (HistoryGrid == null || HistoryTypeFilter == null ||
+                HistoryEmployeeSearchBox == null || TotalHistoryCountText == null)
+            {
+                return;
+            }
+
+            var filtered = _allHistory.AsEnumerable();
+
+            // Фильтр по типу объекта
+            string selectedType = (HistoryTypeFilter.SelectedItem as ComboBoxItem)?.Content.ToString();
+            if (selectedType != "Все" && !string.IsNullOrEmpty(selectedType))
+            {
+                filtered = filtered.Where(h => h.Сущность == selectedType);
+            }
+
+            // Фильтр по сотруднику
+            string employeeSearch = HistoryEmployeeSearchBox.Text?.Trim().ToLower();
+            if (!string.IsNullOrEmpty(employeeSearch))
+            {
+                filtered = filtered.Where(h => !string.IsNullOrEmpty(h.ФИО_сотрудника) &&
+                                               h.ФИО_сотрудника.ToLower().Contains(employeeSearch));
+            }
+
+            // Фильтр по дате начала
+            if (HistoryStartDatePicker != null && HistoryStartDatePicker.SelectedDate.HasValue)
+            {
+                DateTime startDate = HistoryStartDatePicker.SelectedDate.Value.Date;
+                filtered = filtered.Where(h => h.Дата_изменения.Date >= startDate);
+            }
+
+            // Фильтр по дате окончания
+            if (HistoryEndDatePicker != null && HistoryEndDatePicker.SelectedDate.HasValue)
+            {
+                DateTime endDate = HistoryEndDatePicker.SelectedDate.Value.Date;
+                filtered = filtered.Where(h => h.Дата_изменения.Date <= endDate);
+            }
+
+            var result = filtered.ToList();
+            HistoryGrid.ItemsSource = result;
+            TotalHistoryCountText.Text = result.Count.ToString();
+        }
+
+        // Обработчик изменения фильтров истории
+        private void HistoryFilters_Changed(object sender, EventArgs e)
+        {
+            // Проверяем, что все элементы загружены
+            if (HistoryGrid != null && _allHistory != null && _allHistory.Count > 0)
+            {
+                ApplyHistoryFilters();
+            }
+        }
+
+        // Сброс фильтров истории
+        private void ResetHistoryFiltersBtn_Click(object sender, RoutedEventArgs e)
+        {
+            HistoryTypeFilter.SelectedIndex = 0;
+            HistoryEmployeeSearchBox.Clear();
+            HistoryStartDatePicker.SelectedDate = null;
+            HistoryEndDatePicker.SelectedDate = null;
+            ApplyHistoryFilters();
+        }
+
+
     }
 }

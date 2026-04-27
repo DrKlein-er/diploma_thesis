@@ -104,7 +104,7 @@
                      MaxLength="200"/>
 
             <!-- Поле "Описание" -->
-            <TextBlock Text="Описание (необязательно):" 
+            <TextBlock Text="Описание:" 
                        Style="{StaticResource FieldLabelStyle}"/>
             <TextBox x:Name="DescriptionBox" 
                      Style="{StaticResource MultilineTextBoxStyle}"
@@ -129,20 +129,25 @@
             <TextBlock Text="Статус:" 
                        Style="{StaticResource FieldLabelStyle}"/>
             <ComboBox x:Name="StatusBox" 
-                      Height="35"
+                      Height="35" 
                       Margin="0,0,0,15">
-                <ComboBox.ItemContainerStyle>
-                    <Style TargetType="ComboBoxItem">
-                        <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}"/>
-                    </Style>
-                </ComboBox.ItemContainerStyle>
-                <ComboBoxItem Content="В процессе" IsSelected="True"/>
-                <ComboBoxItem Content="Завершен"/>
-                <ComboBoxItem Content="Отложен"/>
+
+                <ComboBoxItem IsSelected="True">
+                    <TextBlock Text="В процессе" Foreground="{DynamicResource ForegroundBrush}"/>
+                </ComboBoxItem>
+
+                <ComboBoxItem>
+                    <TextBlock Text="Завершен" Foreground="{DynamicResource ForegroundBrush}"/>
+                </ComboBoxItem>
+
+                <ComboBoxItem>
+                    <TextBlock Text="Отложен" Foreground="{DynamicResource ForegroundBrush}"/>
+                </ComboBoxItem>
+
             </ComboBox>
 
             <!-- Поле "Ответственный" -->
-            <TextBlock Text="Ответственный (необязательно):" 
+            <TextBlock Text="Ответственный:" 
                        Style="{StaticResource FieldLabelStyle}"/>
             <ComboBox x:Name="EmployeeComboBox" 
                       Height="35"

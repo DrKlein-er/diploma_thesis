@@ -21,10 +21,13 @@ namespace Командное_управление_проектами
             Thread.CurrentThread.CurrentCulture = cultureInfo;
             Thread.CurrentThread.CurrentUICulture = cultureInfo;
 
+            OfficeOpenXml.ExcelPackage.License.SetNonCommercialPersonal("Student");
+
             // Это гарантирует, что все элементы WPF будут использовать эту культуру для форматирования
             FrameworkElement.LanguageProperty.OverrideMetadata(
                 typeof(FrameworkElement),
                 new FrameworkPropertyMetadata(XmlLanguage.GetLanguage(cultureInfo.IetfLanguageTag))
+
             );
         }
     }

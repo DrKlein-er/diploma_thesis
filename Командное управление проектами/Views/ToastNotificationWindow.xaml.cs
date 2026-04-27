@@ -8,19 +8,25 @@ using Командное_управление_проектами.Helpers;
 
 namespace Командное_управление_проектами.Views
 {
-    // Всплывающее уведомление (Toast), отображаемое в правом нижнем углу экрана
+    /// <summary>
+    /// Всплывающее уведомление (Toast), отображаемое в правом нижнем углу экрана
+    /// Автоматически закрывается через 5 секунд
+    /// </summary>
     public partial class ToastNotificationWindow : Window
     {
         private DispatcherTimer _timer;
         private const int DisplayDurationSeconds = 5; // Длительность показа уведомления в секундах
 
-        // Конструктор окна уведомления
+        /// <summary>
+        /// Конструктор окна уведомления
+        /// </summary>
+        /// <param name="title">Заголовок уведомления</param>
+        /// <param name="message">Текст сообщения</param>
+        /// <param name="icon">Иконка уведомления (emoji)</param>
+        /// <param name="priority">Приоритет уведомления (Высокий, Средний, Низкий)</param>
         public ToastNotificationWindow(string title, string message, string icon, string priority)
         {
             InitializeComponent();
-
-            // Применяем текущую тему
-            ApplyTheme();
 
             // Устанавливаем содержимое уведомления
             TitleText.Text = title;
@@ -40,23 +46,10 @@ namespace Командное_управление_проектами.Views
             StartAutoCloseTimer();
         }
 
-        // Применение текущей темы приложения к окну
-        private void ApplyTheme()
-        {
-            var theme = ThemeManager.GetCurrentTheme();
-            var themeUri = theme == "Тёмная"
-                ? "Themes/DarkTheme.xaml"
-                : "Themes/LightTheme.xaml";
-
-            var themeDict = new ResourceDictionary
-            {
-                Source = new Uri(themeUri, UriKind.Relative)
-            };
-
-            this.Resources.MergedDictionaries.Add(themeDict);
-        }
-
-        // Установка цвета рамки в зависимости от приоритета уведомления
+        /// <summary>
+        /// Установка цвета рамки в зависимости от приоритета уведомления
+        /// </summary>
+        /// <param name="priority">Приоритет: Высокий, Средний, Низкий</param>
         private void SetBorderColorByPriority(string priority)
         {
             Color borderColor;
@@ -80,8 +73,10 @@ namespace Командное_управление_проектами.Views
             MainBorder.BorderBrush = new SolidColorBrush(borderColor);
         }
 
-        // Позиционирование окна в правом нижнем углу экрана
-        // С учётом других открытых уведомлений
+        /// <summary>
+        /// Позиционирование окна в правом нижнем углу экрана
+        /// С учётом других открытых уведомлений для правильного расположения
+        /// </summary>
         private void PositionWindow()
         {
             var workingArea = SystemParameters.WorkArea;
@@ -100,7 +95,9 @@ namespace Командное_управление_проектами.Views
             this.Top -= offset;
         }
 
-        // Анимация плавного появления окна
+        /// <summary>
+        /// Анимация плавного появления окна (fade in)
+        /// </summary>
         private void AnimateFadeIn()
         {
             this.Opacity = 0;
@@ -108,7 +105,9 @@ namespace Командное_управление_проектами.Views
             this.BeginAnimation(Window.OpacityProperty, fadeInAnimation);
         }
 
-        // Запуск таймера для автоматического закрытия уведомления
+        /// <summary>
+        /// Запуск таймера для автоматического закрытия уведомления
+        /// </summary>
         private void StartAutoCloseTimer()
         {
             _timer = new DispatcherTimer();
@@ -117,21 +116,27 @@ namespace Командное_управление_проектами.Views
             _timer.Start();
         }
 
-        // Обработчик события таймера - закрытие окна по истечению времени
+        /// <summary>
+        /// Обработчик события таймера - закрытие окна по истечению времени
+        /// </summary>
         private void Timer_Tick(object sender, EventArgs e)
         {
             _timer.Stop();
             CloseWithAnimation();
         }
 
-        // Обработчик нажатия кнопки закрытия
+        /// <summary>
+        /// Обработчик нажатия кнопки закрытия
+        /// </summary>
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             _timer?.Stop();
             CloseWithAnimation();
         }
 
-        // Закрытие окна с анимацией плавного исчезновения
+        /// <summary>
+        /// Закрытие окна с анимацией плавного исчезновения (fade out)
+        /// </summary>
         private void CloseWithAnimation()
         {
             var fadeOutAnimation = new DoubleAnimation(1, 0, TimeSpan.FromSeconds(0.3));
@@ -139,16 +144,20 @@ namespace Командное_управление_проектами.Views
             this.BeginAnimation(Window.OpacityProperty, fadeOutAnimation);
         }
 
-        // Обработка наведения мыши на уведомление
-        // Останавливаем таймер, чтобы пользователь успел прочитать
+        /// <summary>
+        /// Обработка наведения мыши на уведомление
+        /// Останавливаем таймер, чтобы пользователь успел прочитать сообщение
+        /// </summary>
         protected override void OnMouseEnter(System.Windows.Input.MouseEventArgs e)
         {
             base.OnMouseEnter(e);
             _timer?.Stop();
         }
 
-        // Обработка ухода мыши с уведомления
-        // Возобновляем таймер автоматического закрытия
+        /// <summary>
+        /// Обработка ухода мыши с уведомления
+        /// Возобновляем таймер автоматического закрытия
+        /// </summary>
         protected override void OnMouseLeave(System.Windows.Input.MouseEventArgs e)
         {
             base.OnMouseLeave(e);

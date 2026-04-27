@@ -295,8 +295,8 @@ namespace Командное_управление_проектами.Helpers
                 }
             }
         }
-        /// Показать всплывающее окно (Toast notification)
-        /// </summary>
+        /// Показать всплывающее окно 
+
         private void ShowToast(NotificationModel notification)
         {
             Application.Current.Dispatcher.Invoke(() =>
@@ -310,9 +310,9 @@ namespace Командное_управление_проектами.Helpers
                 toastWindow.Show();
             });
         }
-        /// <summary>
+
         /// Обновить частоту проверки дедлайнов
-        /// </summary>
+
         public void UpdateCheckFrequency(int minutes)
         {
             if (_checkTimer != null)

@@ -9,11 +9,14 @@ namespace Командное_управление_проектами.Views
     public partial class AddBudgetWindow : Window
     {
         private int _projectId;
+        private UserModel _currentUser; // Добавляем поле для пользователя
 
-        public AddBudgetWindow(int projectId)
+        // Конструктор окна добавления бюджета
+        public AddBudgetWindow(int projectId, UserModel currentUser = null)
         {
             InitializeComponent();
             _projectId = projectId;
+            _currentUser = currentUser; // Сохраняем пользователя
 
             // Применяем текущую тему
             ApplyTheme();
@@ -102,6 +105,14 @@ namespace Командное_управление_проектами.Views
             {
                 // Добавление записи в базу данных
                 DbHelper.AddBudgetEntry(newBudgetEntry);
+
+                // ЛОГИРУЕМ ДОБАВЛЕНИЕ БЮДЖЕТА
+                if (_currentUser != null)
+                {
+                    DbHelper.LogChange("Проект", _projectId,
+                        $"Добавлена запись бюджета: \"{purpose}\" ({amount:N2} руб.)",
+                        _currentUser.ID_сотрудника);
+                }
 
                 MessageBox.Show($"Запись в бюджет успешно добавлена!\n\nНазначение: {purpose}\nСумма: {amount:N2} ₽",
                     "Успех",

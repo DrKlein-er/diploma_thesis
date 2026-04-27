@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -10,11 +11,13 @@ namespace Командное_управление_проектами.Views
     public partial class EditSubtaskWindow : Window
     {
         private SubtaskModel _subtask;
+        private UserModel _currentUser;
 
-        public EditSubtaskWindow(SubtaskModel subtask)
+        public EditSubtaskWindow(SubtaskModel subtask, UserModel currentUser = null)
         {
             InitializeComponent();
             _subtask = subtask;
+            _currentUser = currentUser;
 
             // Применяем текущую тему
             ApplyTheme();
@@ -120,17 +123,74 @@ namespace Командное_управление_проектами.Views
                 return;
             }
 
-            // Обновление данных подзадачи
-            _subtask.Название_подзадачи = title;
-            _subtask.Описание = string.IsNullOrWhiteSpace(description) ? null : description;
-            _subtask.Статус = status;
-            _subtask.Дата_начала = startDate;
-            _subtask.Дата_завершения = endDate;
-
             try
             {
+                // ✅ ОТСЛЕЖИВАЕМ ИЗМЕНЕНИЯ ДЛЯ ДЕТАЛЬНОГО ЛОГИРОВАНИЯ
+                List<string> changes = new List<string>();
+
+                // Проверяем изменение названия
+                if (_subtask.Название_подзадачи != title)
+                {
+                    changes.Add($"Изменено название подзадачи: '{_subtask.Название_подзадачи}' → '{title}'");
+                }
+
+                // Проверяем изменение описания
+                if (_subtask.Описание != description)
+                {
+                    if (string.IsNullOrEmpty(_subtask.Описание) && !string.IsNullOrEmpty(description))
+                    {
+                        changes.Add($"Добавлено описание к подзадаче \"{_subtask.Название_подзадачи}\"");
+                    }
+                    else if (!string.IsNullOrEmpty(_subtask.Описание) && string.IsNullOrEmpty(description))
+                    {
+                        changes.Add($"Удалено описание подзадачи \"{_subtask.Название_подзадачи}\"");
+                    }
+                    else
+                    {
+                        changes.Add($"Изменено описание подзадачи \"{_subtask.Название_подзадачи}\"");
+                    }
+                }
+
+                // Проверяем изменение статуса
+                if (_subtask.Статус != status)
+                {
+                    changes.Add($"Изменен статус подзадачи \"{_subtask.Название_подзадачи}\": '{_subtask.Статус}' → '{status}'");
+                }
+
+                // Проверяем изменение даты начала
+                if (_subtask.Дата_начала != startDate)
+                {
+                    string oldDate = _subtask.Дата_начала?.ToString("dd.MM.yyyy") ?? "не указана";
+                    string newDate = startDate?.ToString("dd.MM.yyyy") ?? "не указана";
+                    changes.Add($"Изменена дата начала подзадачи \"{_subtask.Название_подзадачи}\": {oldDate} → {newDate}");
+                }
+
+                // Проверяем изменение даты завершения
+                if (_subtask.Дата_завершения != endDate)
+                {
+                    string oldDate = _subtask.Дата_завершения?.ToString("dd.MM.yyyy") ?? "не указана";
+                    string newDate = endDate?.ToString("dd.MM.yyyy") ?? "не указана";
+                    changes.Add($"Изменена дата завершения подзадачи \"{_subtask.Название_подзадачи}\": {oldDate} → {newDate}");
+                }
+
+                // Обновление данных подзадачи
+                _subtask.Название_подзадачи = title;
+                _subtask.Описание = string.IsNullOrWhiteSpace(description) ? null : description;
+                _subtask.Статус = status;
+                _subtask.Дата_начала = startDate;
+                _subtask.Дата_завершения = endDate;
+
                 // Обновление подзадачи в базе данных
                 DbHelper.UpdateSubtask(_subtask);
+
+                // ✅ ЛОГИРУЕМ КАЖДОЕ ИЗМЕНЕНИЕ ОТДЕЛЬНО (только если передан пользователь)
+                if (_currentUser != null && changes.Count > 0)
+                {
+                    foreach (var change in changes)
+                    {
+                        DbHelper.LogChange("Задача", _subtask.ID_задачи, change, _currentUser.ID_сотрудника);
+                    }
+                }
 
                 // Формируем сообщение об успехе
                 string dateInfo = "";
@@ -160,6 +220,7 @@ namespace Командное_управление_проектами.Views
                     MessageBoxImage.Error);
             }
         }
+
 
         // Обработка горячих клавиш
         protected override void OnKeyDown(KeyEventArgs e)

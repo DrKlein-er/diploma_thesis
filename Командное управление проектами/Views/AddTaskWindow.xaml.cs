@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.SqlClient;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -9,13 +8,22 @@ using Командное_управление_проектами.Models;
 
 namespace Командное_управление_проектами.Views
 {
+    /// <summary>
+    /// Окно добавления новой задачи
+    /// </summary>
     public partial class AddTaskWindow : Window
     {
-        private readonly string connectionString = "Data Source=DESKTOP-JRVC3AP;Initial Catalog=Coursework;Integrated Security=True";
+        private UserModel _currentUser; // Поле для текущего пользователя
 
-        public AddTaskWindow()
+        /// <summary>
+        /// Конструктор окна добавления задачи
+        /// </summary>
+        /// <param name="currentUser">Текущий авторизованный пользователь (опционально)</param>
+        public AddTaskWindow(UserModel currentUser = null)
         {
             InitializeComponent();
+            _currentUser = currentUser; // Сохраняем пользователя
+
             // Применяем текущую тему
             ApplyTheme();
             // Загружаем данные
@@ -25,7 +33,9 @@ namespace Командное_управление_проектами.Views
             TitleBox.Focus();
         }
 
-        // Применение текущей темы приложения к окну
+        /// <summary>
+        /// Применение текущей темы приложения к окну
+        /// </summary>
         private void ApplyTheme()
         {
             var theme = ThemeManager.GetCurrentTheme();
@@ -41,14 +51,15 @@ namespace Командное_управление_проектами.Views
             this.Resources.MergedDictionaries.Add(themeDict);
         }
 
-        // Загрузка списка проектов в ComboBox
+        /// <summary>
+        /// Загрузка списка проектов в ComboBox
+        /// </summary>
         private void LoadProjects()
         {
             try
             {
                 List<ProjectModel> projects = DbHelper.GetAllProjects();
                 ProjectComboBox.ItemsSource = projects;
-                ProjectComboBox.SelectedIndex = -1;
             }
             catch (Exception ex)
             {
@@ -59,14 +70,15 @@ namespace Командное_управление_проектами.Views
             }
         }
 
-        // Загрузка списка сотрудников в ComboBox
+        /// <summary>
+        /// Загрузка списка сотрудников в ComboBox
+        /// </summary>
         private void LoadEmployees()
         {
             try
             {
                 List<EmployeeModel> employees = DbHelper.GetAllEmployees();
                 EmployeeComboBox.ItemsSource = employees;
-                EmployeeComboBox.SelectedIndex = -1;
             }
             catch (Exception ex)
             {
@@ -77,7 +89,9 @@ namespace Командное_управление_проектами.Views
             }
         }
 
-        // Обработчик нажатия кнопки "Добавить"
+        /// <summary>
+        /// Обработчик нажатия кнопки "Добавить задачу"
+        /// </summary>
         private void Save_Click(object sender, RoutedEventArgs e)
         {
             // Получаем данные из полей
@@ -141,43 +155,56 @@ namespace Командное_управление_проектами.Views
                 return;
             }
 
+            // Создание новой задачи
+            TaskModel task = new TaskModel
+            {
+                Название_задачи = title,
+                Описание = description,
+                Приоритет = priority,
+                Статус = status,
+                Дата_начала = startDate,
+                Дата_завершения = endDate,
+                ID_ответственного = employeeId
+            };
+
             try
             {
-                // Добавление задачи в базу данных
-                string query = @"
-                    INSERT INTO Задачи 
-                    (Название_задачи, Описание, Приоритет, Статус, Дата_начала, Дата_завершения, ID_проекта, ID_ответственного)
-                    VALUES (@title, @desc, @priority, @status, @startDate, @endDate, @projectId, @empId)";
-                using (SqlConnection conn = new SqlConnection(connectionString))
+                // Добавление задачи через DbHelper (возвращает ID)
+                int newTaskId = DbHelper.AddTask(task, projectId.Value);
+
+                // ✅ ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ
+                if (_currentUser != null)
                 {
-                    conn.Open();
-
-                    using (SqlCommand cmd = new SqlCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@title", title);
-                        cmd.Parameters.AddWithValue("@desc",
-                            string.IsNullOrWhiteSpace(description) ? (object)DBNull.Value : description);
-                        cmd.Parameters.AddWithValue("@priority",
-                            string.IsNullOrWhiteSpace(priority) ? (object)DBNull.Value : priority);
-                        cmd.Parameters.AddWithValue("@status", status);
-                        cmd.Parameters.AddWithValue("@startDate",
-                            startDate.HasValue ? (object)startDate.Value : DBNull.Value);
-                        cmd.Parameters.AddWithValue("@endDate",
-                            endDate.HasValue ? (object)endDate.Value : DBNull.Value); cmd.Parameters.AddWithValue("@projectId", projectId.Value);
-                        cmd.Parameters.AddWithValue("@empId",
-                            employeeId.HasValue ? (object)employeeId.Value : DBNull.Value);
-
-                        cmd.ExecuteNonQuery();
-                    }
+                    DbHelper.LogChange("Задача", newTaskId,
+                        $"Создана задача: \"{title}\"", _currentUser.ID_сотрудника);
                 }
 
-                // Уведомление об успехе
-                MessageBox.Show("Задача успешно добавлена!",
+                // Формируем сообщение об успехе с подробной информацией
+                string projectName = (ProjectComboBox.SelectedItem as ProjectModel)?.Название_проекта;
+                string employeeName = employeeId.HasValue
+                    ? (EmployeeComboBox.SelectedItem as EmployeeModel)?.Имя_сотрудника
+                    : "не назначен";
+                string dueInfo = "";
+                if (startDate.HasValue && endDate.HasValue)
+                {
+                    dueInfo = $"\nПериод: {startDate:dd.MM.yyyy} - {endDate:dd.MM.yyyy}";
+                }
+                else if (endDate.HasValue)
+                {
+                    dueInfo = $"\nДата завершения: {endDate:dd.MM.yyyy}";
+                }
+
+                MessageBox.Show($"Задача успешно добавлена!\n\n" +
+                              $"Название: {title}\n" +
+                              $"Статус: {status}\n" +
+                              $"Проект: {projectName}\n" +
+                              $"Ответственный: {employeeName}{dueInfo}",
                     "Успех",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
 
-                // Закрываем окно
+                // Закрытие окна с успешным результатом
+                this.DialogResult = true;
                 this.Close();
             }
             catch (Exception ex)
@@ -189,7 +216,9 @@ namespace Командное_управление_проектами.Views
             }
         }
 
-        // Обработка горячих клавиш
+        /// <summary>
+        /// Обработка горячих клавиш
+        /// </summary>
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);

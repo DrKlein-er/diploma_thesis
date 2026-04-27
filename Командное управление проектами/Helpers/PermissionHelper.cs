@@ -7,6 +7,7 @@ using Командное_управление_проектами.Models;
 
 namespace Командное_управление_проектами.Helpers
 {
+    // Вспомогательный класс для проверки прав доступа пользователей
     public static class PermissionHelper
     {
         // Статическое хранилище разрешений для каждой роли
@@ -15,7 +16,7 @@ namespace Командное_управление_проектами.Helpers
             {
                 "Администратор", new HashSet<string>
                 {
-                    "PROJECT_CREATE", "PROJECT_EDIT", "PROJECT_DELETE",
+                    "ADMIN_FULL", "PROJECT_CREATE", "PROJECT_EDIT", "PROJECT_DELETE",
                     "TASK_CREATE", "TASK_EDIT", "TASK_DELETE",
                     "USER_MANAGE", "REPORTS_VIEW", "SETTINGS_MANAGE",
                     "EVENT_MANAGE", "REMINDER_MANAGE", "NOTE_MANAGE",
@@ -40,6 +41,7 @@ namespace Командное_управление_проектами.Helpers
             }
         };
 
+        // Проверка наличия у пользователя указанного разрешения
         public static bool HasPermission(UserModel user, string permissionCode)
         {
             if (user == null) return false;
@@ -48,6 +50,7 @@ namespace Командное_управление_проектами.Helpers
                    RolePermissions[user.Роль].Contains(permissionCode);
         }
 
+        // Проверка прав на редактирование проекта
         public static bool CanEditProject(UserModel user, ProjectModel project = null)
         {
             // Администраторы могут редактировать любые проекты
@@ -65,6 +68,7 @@ namespace Командное_управление_проектами.Helpers
             return false;
         }
 
+        // Проверка прав на редактирование задачи
         public static bool CanEditTask(UserModel user, TaskModel task = null)
         {
             // Администраторы могут редактировать любые задачи
