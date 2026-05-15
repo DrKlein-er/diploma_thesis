@@ -164,20 +164,14 @@ namespace Командное_управление_проектами
             HideAllPanels();
             ProjectsPanel.Visibility = Visibility.Visible;
             ApplyProjectFilters();
-
             // Логика прав доступа:
             bool canManageProjects = PermissionHelper.HasPermission(_currentUser, "PROJECT_CREATE");
-
             // Добавление проекта - только по правам (например, Админ/Менеджер)
             AddProjectBtn.Visibility = canManageProjects ? Visibility.Visible : Visibility.Collapsed;
-
-            // ИЗМЕНЕНИЕ: Редактирование проекта теперь доступно ВСЕМ пользователям
             EditProjectBtn.Visibility = Visibility.Visible;
-
             // Удаление - только по правам
             bool canDeleteProjects = PermissionHelper.HasPermission(_currentUser, "PROJECT_DELETE");
             DeleteProjectBtn.Visibility = canDeleteProjects ? Visibility.Visible : Visibility.Collapsed;
-
             SetActiveMenuButton(ProjectsButton);
         }
 

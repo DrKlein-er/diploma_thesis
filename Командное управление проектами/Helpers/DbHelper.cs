@@ -9,7 +9,7 @@ namespace Командное_управление_проектами.Helpers
 {
     public static class DbHelper
     {
-        private static readonly string connectionString = "Data Source=DESKTOP-JRVC3AP;Initial Catalog=Coursework;Integrated Security=True";
+        private static readonly string connectionString = "Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=Coursework;Integrated Security=True";
 
         // ========================== ПОЛЬЗОВАТЕЛИ ==========================
 
