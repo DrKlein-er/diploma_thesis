@@ -75,6 +75,7 @@ namespace Командное_управление_проектами
         private void Register_Click(object sender, RoutedEventArgs e)
         {
             var registerWindow = new RegisterWindow();
+            registerWindow.Owner = this;
             registerWindow.ShowDialog();
         }
         private void ShowPasswordCheckBox_Checked(object sender, RoutedEventArgs e)

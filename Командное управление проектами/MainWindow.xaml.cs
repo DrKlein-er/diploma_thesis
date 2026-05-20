@@ -16,6 +16,7 @@ using Командное_управление_проектами.Helpers;
 using Командное_управление_проектами.Models;
 using Командное_управление_проектами.Views;
 
+using System.Windows.Controls.Primitives;
 using Border = System.Windows.Controls.Border;
 using Color = System.Windows.Media.Color;
 
@@ -38,6 +39,13 @@ namespace Командное_управление_проектами
         private System.Windows.Threading.DispatcherTimer _typingTimer;
         private DateTime _lastTypingNotification = DateTime.MinValue;
         private List<HistoryModel> _allHistory = new List<HistoryModel>();
+
+        private string _eventTypeFilter = "Все";
+        private string _eventSearchText = "";
+
+        private Popup _dayDetailPopup;
+        private TextBlock _popupDateLabel;
+        private ItemsControl _popupItemsControl;
 
         public string _sessionId;
         public MainWindow(UserModel user)
@@ -179,6 +187,7 @@ namespace Командное_управление_проектами
         private void AddProject_Click(object sender, RoutedEventArgs e)
         {
             var window = new Views.AddProjectWindow();
+            window.Owner = this;
             window.ShowDialog();
             ApplyProjectFilters(); // Обновляем список проектов
         }
@@ -187,8 +196,8 @@ namespace Командное_управление_проектами
         {
             if (ProjectsGrid.SelectedItem is ProjectModel selected)
             {
-                // Открываем окно, явно указывая, что это редактирование (isNew: false)
                 var window = new EditProjectWindow(selected, _currentUser, false);
+                window.Owner = this;
                 window.ShowDialog();
                 ApplyProjectFilters(); // Обновляем список проектов
             }
@@ -322,7 +331,8 @@ namespace Командное_управление_проектами
         {
             if (TasksGrid.SelectedItem is TaskModel selected)
             {
-                var editWindow = new EditTaskWindow(selected, _currentUser); // <-- Теперь два аргумента
+                var editWindow = new EditTaskWindow(selected, _currentUser);
+                editWindow.Owner = this;
                 editWindow.ShowDialog();
                 ShowTasks(null, null);
             }
@@ -360,9 +370,10 @@ namespace Командное_управление_проектами
 
         private void AddTask_Click(object sender, RoutedEventArgs e)
         {
-            var window = new Views.AddTaskWindow(_currentUser); // Передаём текущего пользователя
+            var window = new Views.AddTaskWindow(_currentUser);
+            window.Owner = this;
             window.ShowDialog();
-            ApplyTaskFilters(); // Обновляем список задач
+            ApplyTaskFilters();
         }
 
         // Инициализация и обновление календаря
@@ -374,184 +385,159 @@ namespace Командное_управление_проектами
 
         private void UpdateCalendar()
         {
-            MonthYearLabel.Text = _currentMonth.ToString("MMMM yyyy");
+            MonthYearLabel.Text = _currentMonth.ToString("MMMM yyyy",
+                new System.Globalization.CultureInfo("ru-RU"));
             CalendarItemsControl.Items.Clear();
 
-            int daysInMonth = DateTime.DaysInMonth(_currentMonth.Year, _currentMonth.Month);
             int firstDayOfWeek = (int)_currentMonth.DayOfWeek;
             if (firstDayOfWeek == 0) firstDayOfWeek = 7;
-            int offset = firstDayOfWeek - 1;
+            int offset       = firstDayOfWeek - 1;
+            DateTime gridStart = _currentMonth.AddDays(-offset);
+            DateTime gridEnd   = gridStart.AddDays(41);
 
-            // Получаем цвета из текущей темы
+            var allEvents    = DbHelper.GetEventsInRange(gridStart, gridEnd);
+            var allTasks     = DbHelper.GetTasksInRange(gridStart, gridEnd);
+            var allReminders = DbHelper.GetRemindersInRange(gridStart, gridEnd);
+
+            bool showEvents    = ToggleEvents.IsChecked == true;
+            bool showTasks     = ToggleTasks.IsChecked == true;
+            bool showReminders = ToggleReminders.IsChecked == true;
+
+            bool isDark = ThemeManager.GetCurrentTheme() == "Тёмная";
+
             var foregroundBrush = (SolidColorBrush)Application.Current.Resources["ForegroundBrush"];
-            var borderBrush = (SolidColorBrush)Application.Current.Resources["BorderBrush"];
+            var borderBrush     = (SolidColorBrush)Application.Current.Resources["BorderBrush"];
             var backgroundBrush = (SolidColorBrush)Application.Current.Resources["BackgroundBrush"];
-            var secondaryBackgroundBrush = (SolidColorBrush)Application.Current.Resources["SecondaryBackgroundBrush"];
 
-            // Яркие контрастные цвета для элементов календаря
-            var eventBrush = new SolidColorBrush(Color.FromRgb(100, 181, 246)); // Светло-синий
-            var reminderBrush = new SolidColorBrush(Color.FromRgb(129, 199, 132)); // Светло-зелёный
-            var noteBrush = new SolidColorBrush(Color.FromRgb(206, 147, 216)); // Светло-фиолетовый
-            var taskBrush = new SolidColorBrush(Color.FromRgb(255, 183, 77)); // Светло-оранжевый
+            var eventBrush    = (SolidColorBrush)Application.Current.Resources["EventMeetingBrush"];
+            var taskBrush     = (SolidColorBrush)Application.Current.Resources["EventDeadlineBrush"];
+            var reminderBrush = (SolidColorBrush)Application.Current.Resources["EventOtherBrush"];
 
-            // Добавляем пустые ячейки для дней предыдущего месяца
-            for (int i = 0; i < offset; i++)
+            Color todayCellBg = isDark ? Color.FromRgb(62, 62, 66)  : Color.FromRgb(227, 242, 253);
+            Color hoverBg     = isDark ? Color.FromRgb(45, 45, 48)  : Color.FromRgb(245, 245, 245);
+            Color todayMarker = isDark ? Color.FromRgb(14, 99, 156)  : Color.FromRgb(33, 150, 243);
+
+            for (int i = 0; i < 42; i++)
             {
-                CalendarItemsControl.Items.Add(new Border
+                DateTime cellDate      = gridStart.AddDays(i);
+                bool isCurrentMonth    = cellDate.Month == _currentMonth.Month;
+                bool isToday           = cellDate.Date == DateTime.Today;
+
+                var dayEvents = showEvents
+                    ? allEvents.Where(e => e.Дата_начала.HasValue
+                        && e.Дата_начала.Value.Date == cellDate.Date).ToList()
+                    : new List<EventModel>();
+                var dayTasks = showTasks
+                    ? allTasks.Where(t => t.Дата_завершения.HasValue
+                        && t.Дата_завершения.Value.Date == cellDate.Date).ToList()
+                    : new List<TaskModel>();
+                var dayReminders = showReminders
+                    ? allReminders.Where(r => r.Дата_напоминания.HasValue
+                        && r.Дата_напоминания.Value.Date == cellDate.Date).ToList()
+                    : new List<ReminderModel>();
+
+                int totalItems  = dayEvents.Count + dayTasks.Count + dayReminders.Count;
+                var cellContent = new StackPanel { Margin = new Thickness(2) };
+
+                if (isToday)
                 {
-                    BorderBrush = borderBrush,
-                    BorderThickness = new Thickness(1),
-                    Margin = new Thickness(2),
-                    Background = secondaryBackgroundBrush,
-                    CornerRadius = new CornerRadius(4)
-                });
-            }
-
-            // Заполняем ячейки для текущего месяца
-            for (int day = 1; day <= daysInMonth; day++)
-            {
-                DateTime date = new DateTime(_currentMonth.Year, _currentMonth.Month, day);
-                var events = DbHelper.GetEventsByDate(date);
-                var reminders = DbHelper.GetRemindersByDate(date);
-                var notes = DbHelper.GetNotesByDate(date);
-                var tasks = DbHelper.GetTasksByDate(date);
-
-                // Определяем, есть ли записи на этот день
-                bool hasItems = events.Any() || reminders.Any() || notes.Any() || tasks.Any();
-
-                Border cellBorder = new Border
-                {
-                    BorderBrush = borderBrush,
-                    BorderThickness = new Thickness(1),
-                    Margin = new Thickness(2),
-                    Padding = new Thickness(5),
-                    Background = hasItems ? secondaryBackgroundBrush : backgroundBrush,
-                    CornerRadius = new CornerRadius(4)
-                };
-
-                StackPanel cellPanel = new StackPanel();
-
-                // Заголовок с номером дня - увеличенный и более заметный
-                TextBlock dayHeader = new TextBlock
-                {
-                    Text = day.ToString(),
-                    FontWeight = FontWeights.Bold,
-                    FontSize = 14,
-                    Foreground = foregroundBrush,
-                    Margin = new Thickness(0, 0, 0, 5)
-                };
-                cellPanel.Children.Add(dayHeader);
-
-                // События с иконками и фоном
-                foreach (var ev in events)
-                {
-                    var eventBorder = new Border
+                    var circle = new Border
                     {
-                        Background = new SolidColorBrush(Color.FromArgb(40, 100, 181, 246)), // Полупрозрачный фон
-                        CornerRadius = new CornerRadius(3),
-                        Padding = new Thickness(4, 2, 4, 2),
-                        Margin = new Thickness(0, 2, 0, 2)
+                        Width               = 28,
+                        Height              = 28,
+                        CornerRadius        = new CornerRadius(14),
+                        Background          = new SolidColorBrush(todayMarker),
+                        HorizontalAlignment = HorizontalAlignment.Left,
+                        Margin              = new Thickness(0, 0, 0, 3)
                     };
-
-                    eventBorder.Child = new TextBlock
+                    circle.Child = new TextBlock
                     {
-                        Text = "✨ " + (ev.Название_события.Length > 20
-                            ? ev.Название_события.Substring(0, 20) + "..."
-                            : ev.Название_события),
-                        FontSize = 11,
-                        Foreground = eventBrush,
-                        TextWrapping = TextWrapping.Wrap,
-                        FontWeight = FontWeights.SemiBold
+                        Text                = cellDate.Day.ToString(),
+                        FontWeight          = FontWeights.Bold,
+                        FontSize            = 13,
+                        Foreground          = Brushes.White,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment   = VerticalAlignment.Center
                     };
-                    cellPanel.Children.Add(eventBorder);
+                    cellContent.Children.Add(circle);
                 }
-
-                // Напоминания с иконками и фоном
-                foreach (var rem in reminders)
+                else
                 {
-                    var reminderBorder = new Border
+                    cellContent.Children.Add(new TextBlock
                     {
-                        Background = new SolidColorBrush(Color.FromArgb(40, 129, 199, 132)),
-                        CornerRadius = new CornerRadius(3),
-                        Padding = new Thickness(4, 2, 4, 2),
-                        Margin = new Thickness(0, 2, 0, 2)
-                    };
-
-                    reminderBorder.Child = new TextBlock
-                    {
-                        Text = "⏰ " + (rem.Length > 20 ? rem.Substring(0, 20) + "..." : rem),
-                        FontSize = 11,
-                        Foreground = reminderBrush,
-                        TextWrapping = TextWrapping.Wrap,
-                        FontWeight = FontWeights.SemiBold
-                    };
-                    cellPanel.Children.Add(reminderBorder);
-                }
-
-                // Заметки с иконками и фоном
-                foreach (var note in notes)
-                {
-                    var noteBorder = new Border
-                    {
-                        Background = new SolidColorBrush(Color.FromArgb(40, 206, 147, 216)),
-                        CornerRadius = new CornerRadius(3),
-                        Padding = new Thickness(4, 2, 4, 2),
-                        Margin = new Thickness(0, 2, 0, 2)
-                    };
-
-                    noteBorder.Child = new TextBlock
-                    {
-                        Text = "📝 " + (note.Текст_заметки.Length > 20
-                            ? note.Текст_заметки.Substring(0, 20) + "..."
-                            : note.Текст_заметки),
-                        FontSize = 11,
-                        Foreground = noteBrush,
-                        TextWrapping = TextWrapping.Wrap,
-                        FontWeight = FontWeights.SemiBold
-                    };
-                    cellPanel.Children.Add(noteBorder);
-                }
-
-                // Задачи с иконками и фоном
-                foreach (var task in tasks)
-                {
-                    var taskBorder = new Border
-                    {
-                        Background = new SolidColorBrush(Color.FromArgb(40, 255, 183, 77)),
-                        CornerRadius = new CornerRadius(3),
-                        Padding = new Thickness(4, 2, 4, 2),
-                        Margin = new Thickness(0, 2, 0, 2)
-                    };
-
-                    taskBorder.Child = new TextBlock
-                    {
-                        Text = "📋 " + (task.Название_задачи.Length > 20
-                            ? task.Название_задачи.Substring(0, 20) + "..."
-                            : task.Название_задачи),
-                        FontSize = 11,
-                        Foreground = taskBrush,
-                        TextWrapping = TextWrapping.Wrap,
-                        FontWeight = FontWeights.SemiBold
-                    };
-                    cellPanel.Children.Add(taskBorder);
-                }
-
-                // Если элементов слишком много, показываем счётчик
-                int totalItems = events.Count + reminders.Count + notes.Count + tasks.Count;
-                if (totalItems > 4)
-                {
-                    cellPanel.Children.Add(new TextBlock
-                    {
-                        Text = $"+ ещё {totalItems - 4}",
-                        FontSize = 10,
+                        Text       = cellDate.Day.ToString(),
+                        FontWeight = FontWeights.SemiBold,
+                        FontSize   = 13,
                         Foreground = foregroundBrush,
-                        FontStyle = FontStyles.Italic,
-                        Margin = new Thickness(0, 5, 0, 0),
-                        HorizontalAlignment = HorizontalAlignment.Center
+                        Opacity    = isCurrentMonth ? 1.0 : 0.4,
+                        Margin     = new Thickness(0, 0, 0, 3)
                     });
                 }
 
-                cellBorder.Child = cellPanel;
+                int shown = 0;
+                foreach (var ev in dayEvents)
+                {
+                    if (shown >= 3) break;
+                    cellContent.Children.Add(BuildCalendarCard(ev.Название_события, eventBrush, ev));
+                    shown++;
+                }
+                foreach (var task in dayTasks)
+                {
+                    if (shown >= 3) break;
+                    cellContent.Children.Add(BuildCalendarCard(task.Название_задачи, taskBrush, task));
+                    shown++;
+                }
+                foreach (var rem in dayReminders)
+                {
+                    if (shown >= 3) break;
+                    cellContent.Children.Add(BuildCalendarCard(rem.Текст_напоминания, reminderBrush, rem));
+                    shown++;
+                }
+
+                if (totalItems > 3)
+                {
+                    int extra                = totalItems - 3;
+                    var capturedDate         = cellDate;
+                    var capturedDayEvents    = dayEvents;
+                    var capturedDayTasks     = dayTasks;
+                    var capturedDayReminders = dayReminders;
+                    var moreLink = new TextBlock
+                    {
+                        Text       = $"Ещё +{extra}",
+                        FontSize   = 11,
+                        FontWeight = FontWeights.SemiBold,
+                        Foreground = eventBrush,
+                        Cursor     = Cursors.Hand,
+                        Margin     = new Thickness(4, 2, 0, 0)
+                    };
+                    moreLink.MouseLeftButtonUp += (s, args) =>
+                        ShowDayDetailPopup(capturedDate, capturedDayEvents,
+                            capturedDayTasks, capturedDayReminders, (UIElement)s);
+                    cellContent.Children.Add(moreLink);
+                }
+
+                Color normalBg       = isToday ? todayCellBg : backgroundBrush.Color;
+                var capturedNormal   = normalBg;
+                var capturedHover    = hoverBg;
+
+                var cellBorder = new Border
+                {
+                    BorderBrush     = borderBrush,
+                    BorderThickness = new Thickness(1),
+                    Margin          = new Thickness(2),
+                    Padding         = new Thickness(5),
+                    Background      = new SolidColorBrush(normalBg),
+                    CornerRadius    = new CornerRadius(4),
+                    MinHeight       = 90,
+                    Opacity         = isCurrentMonth ? 1.0 : 0.65,
+                    Child           = cellContent
+                };
+
+                cellBorder.MouseEnter += (s, args) =>
+                    ((Border)s).Background = new SolidColorBrush(capturedHover);
+                cellBorder.MouseLeave += (s, args) =>
+                    ((Border)s).Background = new SolidColorBrush(capturedNormal);
+
                 CalendarItemsControl.Items.Add(cellBorder);
             }
         }
@@ -566,6 +552,172 @@ namespace Командное_управление_проектами
         {
             _currentMonth = _currentMonth.AddMonths(1);
             UpdateCalendar();
+        }
+
+        private void TodayButton_Click(object sender, RoutedEventArgs e)
+        {
+            _currentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+            UpdateCalendar();
+        }
+
+        private void CalendarFilter_Changed(object sender, RoutedEventArgs e)
+        {
+            UpdateCalendar();
+        }
+
+        private Border BuildCalendarCard(string title, SolidColorBrush accentBrush, object item)
+        {
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var strip = new Border
+            {
+                Background   = accentBrush,
+                CornerRadius = new CornerRadius(2, 0, 0, 2)
+            };
+            Grid.SetColumn(strip, 0);
+            grid.Children.Add(strip);
+
+            var label = new TextBlock
+            {
+                Text              = title ?? "",
+                FontSize          = 11,
+                Foreground        = (SolidColorBrush)Application.Current.Resources["ForegroundBrush"],
+                TextTrimming      = TextTrimming.CharacterEllipsis,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin            = new Thickness(4, 0, 2, 0)
+            };
+            Grid.SetColumn(label, 1);
+            grid.Children.Add(label);
+
+            var card = new Border
+            {
+                Height       = 22,
+                CornerRadius = new CornerRadius(4),
+                Margin       = new Thickness(0, 1, 0, 1),
+                Background   = new SolidColorBrush(Color.FromArgb(
+                    30, accentBrush.Color.R, accentBrush.Color.G, accentBrush.Color.B)),
+                Cursor = Cursors.Hand,
+                Child  = grid,
+                Tag    = item
+            };
+            card.MouseLeftButtonUp += CalendarCard_Click;
+            return card;
+        }
+
+        private void CalendarCard_Click(object sender, MouseButtonEventArgs e)
+        {
+            var card = sender as Border;
+            if (card?.Tag == null) return;
+
+            if (_dayDetailPopup != null)
+                _dayDetailPopup.IsOpen = false;
+
+            if (card.Tag is EventModel ev)
+            {
+                var win = new EditEventWindow(ev) { Owner = this };
+                win.ShowDialog();
+            }
+            else if (card.Tag is TaskModel task)
+            {
+                var win = new EditTaskWindow(task, _currentUser) { Owner = this };
+                win.ShowDialog();
+            }
+            else if (card.Tag is ReminderModel rem)
+            {
+                var win = new EditReminderWindow(rem) { Owner = this };
+                win.ShowDialog();
+            }
+
+            UpdateCalendar();
+            e.Handled = true;
+        }
+
+        private void EnsureDayDetailPopup()
+        {
+            if (_dayDetailPopup != null) return;
+
+            _popupDateLabel = new TextBlock
+            {
+                FontWeight = FontWeights.Bold,
+                FontSize   = 14,
+                Foreground = (SolidColorBrush)Application.Current.Resources["ForegroundBrush"],
+                Margin     = new Thickness(0, 0, 0, 8)
+            };
+
+            _popupItemsControl = new ItemsControl();
+
+            var scrollViewer = new ScrollViewer
+            {
+                MaxHeight                   = 300,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Content                     = _popupItemsControl
+            };
+
+            var innerPanel = new StackPanel();
+            innerPanel.Children.Add(_popupDateLabel);
+            innerPanel.Children.Add(scrollViewer);
+
+            var popupBorder = new Border
+            {
+                Background      = (SolidColorBrush)Application.Current.Resources["BackgroundBrush"],
+                BorderBrush     = (SolidColorBrush)Application.Current.Resources["BorderBrush"],
+                BorderThickness = new Thickness(1),
+                CornerRadius    = new CornerRadius(8),
+                Padding         = new Thickness(12),
+                MinWidth        = 240,
+                MaxWidth        = 340,
+                Child           = innerPanel
+            };
+
+            _dayDetailPopup = new Popup
+            {
+                Child              = popupBorder,
+                StaysOpen          = false,
+                AllowsTransparency = true,
+                PopupAnimation     = PopupAnimation.Fade
+            };
+        }
+
+        private void ShowDayDetailPopup(DateTime date, List<EventModel> events,
+            List<TaskModel> tasks, List<ReminderModel> reminders, UIElement anchor)
+        {
+            EnsureDayDetailPopup();
+
+            _popupDateLabel.Text = date.ToString("d MMMM yyyy",
+                new System.Globalization.CultureInfo("ru-RU"));
+            _popupItemsControl.Items.Clear();
+
+            var eventBrush    = (SolidColorBrush)Application.Current.Resources["EventMeetingBrush"];
+            var taskBrush     = (SolidColorBrush)Application.Current.Resources["EventDeadlineBrush"];
+            var reminderBrush = (SolidColorBrush)Application.Current.Resources["EventOtherBrush"];
+
+            foreach (var ev in events)
+            {
+                var card = BuildCalendarCard(ev.Название_события, eventBrush, ev);
+                card.Height = double.NaN;
+                card.Margin = new Thickness(0, 2, 0, 2);
+                _popupItemsControl.Items.Add(card);
+            }
+            foreach (var task in tasks)
+            {
+                var card = BuildCalendarCard(task.Название_задачи, taskBrush, task);
+                card.Height = double.NaN;
+                card.Margin = new Thickness(0, 2, 0, 2);
+                _popupItemsControl.Items.Add(card);
+            }
+            foreach (var rem in reminders)
+            {
+                var card = BuildCalendarCard(rem.Текст_напоминания, reminderBrush, rem);
+                card.Height = double.NaN;
+                card.Margin = new Thickness(0, 2, 0, 2);
+                _popupItemsControl.Items.Add(card);
+            }
+
+            _dayDetailPopup.PlacementTarget = anchor;
+            _dayDetailPopup.Placement       = PlacementMode.MousePoint;
+            _dayDetailPopup.IsOpen          = true;
         }
 
         // Отображение панели "Календарь"
@@ -585,8 +737,6 @@ namespace Командное_управление_проектами
 
             bool canManageEvents = PermissionHelper.HasPermission(_currentUser, "EVENT_MANAGE");
             AddEventBtn.Visibility = canManageEvents ? Visibility.Visible : Visibility.Collapsed;
-            EditEventBtn.Visibility = canManageEvents ? Visibility.Visible : Visibility.Collapsed;
-            DeleteEventBtn.Visibility = canManageEvents ? Visibility.Visible : Visibility.Collapsed;
 
             LoadEventsData();
             SetActiveMenuButton(EventsButton);
@@ -594,46 +744,140 @@ namespace Командное_управление_проектами
 
         private void LoadEventsData()
         {
-            var allEvents = DbHelper.GetAllEvents();
-            EventsGrid.ItemsSource = allEvents;
+            try
+            {
+                var allEvents = DbHelper.GetAllEvents();
+
+                // Фильтрация по типу
+                IEnumerable<EventModel> filtered = allEvents;
+                if (_eventTypeFilter != "Все")
+                {
+                    filtered = filtered.Where(ev => ev.Тип_события == _eventTypeFilter);
+                }
+
+                // Фильтрация по строке поиска
+                if (!string.IsNullOrWhiteSpace(_eventSearchText))
+                {
+                    string q = _eventSearchText.Trim().ToLower();
+                    filtered = filtered.Where(ev =>
+                        (ev.Название_события?.ToLower().Contains(q) ?? false) ||
+                        (ev.Описание?.ToLower().Contains(q) ?? false) ||
+                        (ev.Место_проведения?.ToLower().Contains(q) ?? false) ||
+                        (ev.Название_проекта?.ToLower().Contains(q) ?? false) ||
+                        (ev.Название_задачи?.ToLower().Contains(q) ?? false));
+                }
+
+                var result = filtered.ToList();
+
+                // Счётчик с корректным склонением
+                EventsCountLabel.Text = $"{result.Count} {GetEventWord(result.Count)}";
+
+                // Привязка карточек к ItemsControl + empty state
+                EventsItemsControl.ItemsSource = result;
+                EventsEmptyState.Visibility = result.Count == 0
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка загрузки событий:\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // Склонение слова «событие» по числу: 1 событие / 2-4 события / 5+ событий
+        private static string GetEventWord(int n)
+        {
+            int mod100 = n % 100;
+            int mod10 = n % 10;
+            if (mod100 >= 11 && mod100 <= 14) return "событий";
+            if (mod10 == 1) return "событие";
+            if (mod10 >= 2 && mod10 <= 4) return "события";
+            return "событий";
+        }
+
+        // Обработчик переключения чипа-фильтра по типу
+        private void EventTypeFilter_Changed(object sender, RoutedEventArgs e)
+        {
+            // Если ChipAll ещё не существует (XAML не успел проинициализироваться) — пропускаем
+            if (!IsLoaded) return;
+
+            if (ChipMeeting.IsChecked == true) _eventTypeFilter = "Встреча";
+            else if (ChipDeadline.IsChecked == true) _eventTypeFilter = "Дедлайн";
+            else if (ChipPresent.IsChecked == true) _eventTypeFilter = "Презентация";
+            else if (ChipPersonal.IsChecked == true) _eventTypeFilter = "Личное";
+            else _eventTypeFilter = "Все";
+
+            LoadEventsData();
+        }
+
+        // Обработчик ввода в поле поиска
+        private void EventSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        {
+            if (!IsLoaded) return;
+            _eventSearchText = EventSearchBox.Text ?? "";
+            LoadEventsData();
         }
 
         private void AddEventBtn_Click(object sender, RoutedEventArgs e)
         {
             var window = new Views.AddEventWindow();
+            window.Owner = this;
             window.ShowDialog();
             LoadEventsData();
         }
 
-        private void EditEventBtn_Click(object sender, RoutedEventArgs e)
+
+        // Редактирование события из карточки (по ID из Tag кнопки)
+        private void EditEventCard_Click(object sender, RoutedEventArgs e)
         {
-            if (EventsGrid.SelectedItem is EventModel selectedEvent)
+            if (sender is System.Windows.Controls.Button btn && btn.Tag is int eventId)
             {
-                var window = new Views.EditEventWindow(selectedEvent);
-                window.ShowDialog();
-                LoadEventsData();
-            }
-            else
-            {
-                MessageBox.Show("Выберите событие для редактирования.");
+                try
+                {
+                    var ev = DbHelper.GetAllEvents().FirstOrDefault(x => x.ID_события == eventId);
+                    if (ev == null) return;
+
+                    var window = new Views.EditEventWindow(ev);
+                    window.Owner = this;
+                    window.ShowDialog();
+                    LoadEventsData();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка открытия события:\n{ex.Message}",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
         }
 
-        private void DeleteEventBtn_Click(object sender, RoutedEventArgs e)
+        // Удаление события из карточки (по ID из Tag кнопки)
+        private void DeleteEventCard_Click(object sender, RoutedEventArgs e)
         {
-            if (EventsGrid.SelectedItem is EventModel selectedEvent)
+            if (sender is System.Windows.Controls.Button btn && btn.Tag is int eventId)
             {
-                if (MessageBox.Show($"Удалить событие \"{selectedEvent.Название_события}\"?",
-                                    "Подтверждение",
-                                    MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                try
                 {
-                    DbHelper.DeleteEvent(selectedEvent.ID_события);
-                    LoadEventsData();
+                    var ev = DbHelper.GetAllEvents().FirstOrDefault(x => x.ID_события == eventId);
+                    if (ev == null) return;
+
+                    var confirm = MessageBox.Show(
+                        $"Удалить событие «{ev.Название_события}»?",
+                        "Подтверждение удаления",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Question);
+
+                    if (confirm == MessageBoxResult.Yes)
+                    {
+                        DbHelper.DeleteEvent(eventId);
+                        LoadEventsData();
+                    }
                 }
-            }
-            else
-            {
-                MessageBox.Show("Выберите событие для удаления.");
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка удаления события:\n{ex.Message}",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
         }
 
@@ -655,6 +899,7 @@ namespace Командное_управление_проектами
         private void AddReminderBtn_Click(object sender, RoutedEventArgs e)
         {
             var window = new Views.AddReminderWindow();
+            window.Owner = this;
             window.ShowDialog();
             LoadRemindersData();
         }
@@ -664,6 +909,7 @@ namespace Командное_управление_проектами
             if (RemindersGrid.SelectedItem is ReminderModel selectedReminder)
             {
                 var window = new Views.EditReminderWindow(selectedReminder);
+                window.Owner = this;
                 window.ShowDialog();
                 LoadRemindersData();
             }
@@ -690,6 +936,50 @@ namespace Командное_управление_проектами
             }
         }
 
+        private void SnoozeReminder15_Click(object sender, RoutedEventArgs e)
+        {
+            SnoozeReminder(sender, 15);
+        }
+
+        private void SnoozeReminder60_Click(object sender, RoutedEventArgs e)
+        {
+            SnoozeReminder(sender, 60);
+        }
+
+        private void SnoozeReminder(object sender, int minutes)
+        {
+            if (sender is System.Windows.Controls.Button btn && btn.Tag is int reminderId)
+            {
+                try
+                {
+                    DbHelper.SnoozeReminder(reminderId, minutes);
+                    LoadRemindersData();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка отложения напоминания:\n{ex.Message}",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private void MarkReminderDone_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.Button btn && btn.Tag is int reminderId)
+            {
+                try
+                {
+                    DbHelper.SetReminderStatus(reminderId, "Выполнено");
+                    LoadRemindersData();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка изменения статуса:\n{ex.Message}",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
         // Отображение панели "Заметки"
         private void ShowNotes(object sender, RoutedEventArgs e)
         {
@@ -708,6 +998,7 @@ namespace Командное_управление_проектами
         private void AddNoteBtn_Click(object sender, RoutedEventArgs e)
         {
             var window = new Views.AddNoteWindow();
+            window.Owner = this;
             window.ShowDialog();
             LoadNotesData();
         }
@@ -717,6 +1008,7 @@ namespace Командное_управление_проектами
             if (NotesGrid.SelectedItem is NoteModel selectedNote)
             {
                 var window = new Views.EditNoteWindow(selectedNote);
+                window.Owner = this;
                 window.ShowDialog();
                 LoadNotesData();
             }
@@ -742,6 +1034,23 @@ namespace Командное_управление_проектами
             }
         }
 
+        private void ToggleNotePin_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.Button btn && btn.Tag is int noteId)
+            {
+                try
+                {
+                    DbHelper.ToggleNotePin(noteId);
+                    LoadNotesData();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка закрепления заметки:\n{ex.Message}",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
         // Отображение панели "Пользователи"
         private void ShowUsers(object sender, RoutedEventArgs e)
         {
@@ -760,6 +1069,7 @@ namespace Командное_управление_проектами
         private void AddUserBtn_Click(object sender, RoutedEventArgs e)
         {
             Views.AddUserWindow win = new Views.AddUserWindow();
+            win.Owner = this;
             win.ShowDialog();
             ShowUsers(sender, e);
         }
@@ -1468,6 +1778,7 @@ namespace Командное_управление_проектами
             if (UsersGrid.SelectedItem is UserModel selectedUser)
             {
                 Views.EditUserWindow editWin = new Views.EditUserWindow(selectedUser);
+                editWin.Owner = this;
                 editWin.ShowDialog();
                 LoadUsersData();
             }
@@ -1590,8 +1901,8 @@ namespace Командное_управление_проектами
             // Проверяем, какая задача выбрана в основной таблице
             if (TasksGrid.SelectedItem is TaskModel selectedTask)
             {
-                // Создаем и показываем окно с диаграммой, передавая в него выбранную задачу
                 var ganttWindow = new GanttChartWindow(selectedTask);
+                ganttWindow.Owner = this;
                 ganttWindow.Show();
             }
             else
@@ -1802,6 +2113,7 @@ namespace Командное_управление_проектами
         private void ShowProfile(object sender, RoutedEventArgs e)
         {
             var profileWindow = new UserProfileWindow(_currentUser);
+            profileWindow.Owner = this;
             profileWindow.ShowDialog();
 
             // Перезагружаем настройки после закрытия профиля

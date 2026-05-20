@@ -9,6 +9,43 @@
                 <!-- Подключаем светлую тему по умолчанию -->
                 <ResourceDictionary Source="Themes/LightTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+
+            <!-- =================================================== -->
+            <!-- ПАЛИТРА ТИПОВ СОБЫТИЙ                                -->
+            <!-- Семантические цвета, одинаковые в Light/Dark темах   -->
+            <!-- =================================================== -->
+
+            <!-- Встреча (синий) -->
+            <SolidColorBrush x:Key="EventMeetingBrush"     Color="#2196F3"/>
+            <SolidColorBrush x:Key="EventMeetingBgBrush"   Color="#E3F2FD"/>
+
+            <!-- Дедлайн (оранжевый) -->
+            <SolidColorBrush x:Key="EventDeadlineBrush"    Color="#FF9800"/>
+            <SolidColorBrush x:Key="EventDeadlineBgBrush"  Color="#FFF3E0"/>
+
+            <!-- Презентация (фиолетовый) -->
+            <SolidColorBrush x:Key="EventPresentBrush"     Color="#9C27B0"/>
+            <SolidColorBrush x:Key="EventPresentBgBrush"   Color="#F3E5F5"/>
+
+            <!-- Личное (розовый) -->
+            <SolidColorBrush x:Key="EventPersonalBrush"    Color="#E91E63"/>
+            <SolidColorBrush x:Key="EventPersonalBgBrush"  Color="#FCE4EC"/>
+
+            <!-- Другое (зелёный) — fallback для нераспознанного типа -->
+            <SolidColorBrush x:Key="EventOtherBrush"       Color="#4CAF50"/>
+            <SolidColorBrush x:Key="EventOtherBgBrush"     Color="#E8F5E9"/>
+
+            <!-- =================================================== -->
+            <!-- УНИВЕРСАЛЬНЫЕ ЦВЕТА ИКОНОК В КАРТОЧКАХ                -->
+            <!-- =================================================== -->
+
+            <!-- Нейтральный серый для меток времени, места, задачи -->
+            <SolidColorBrush x:Key="MetaIconBrush"          Color="#9E9E9E"/>
+            <SolidColorBrush x:Key="MetaTextBrush"          Color="#616161"/>
+
+            <!-- Фон футера карточки (бледно-серый) -->
+            <SolidColorBrush x:Key="CardFooterBgBrush"      Color="#FAFAFA"/>
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>

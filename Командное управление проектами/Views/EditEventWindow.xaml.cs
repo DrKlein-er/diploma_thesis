@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Globalization;
+using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using Командное_управление_проектами.Helpers;
 using Командное_управление_проектами.Models;
@@ -8,20 +11,20 @@ namespace Командное_управление_проектами.Views
 {
     public partial class EditEventWindow : Window
     {
-        private EventModel _event;
+        private readonly EventModel _event;
+        private bool _isLoading = true;
 
         public EditEventWindow(EventModel ev)
         {
             InitializeComponent();
-            _event = ev;
-
-            // Применяем текущую тему
             ApplyTheme();
-            // Загружаем список проектов
+
+            _event = ev ?? throw new ArgumentNullException(nameof(ev));
+
             LoadProjects();
-            // Заполняем поля данными события
             LoadEventData();
-            // Устанавливаем фокус на первое поле
+
+            _isLoading = false;
             TitleBox.Focus();
         }
 
@@ -58,25 +61,112 @@ namespace Командное_управление_проектами.Views
             }
         }
 
-        // Загрузка данных события в поля формы
+        // Заполнение полей текущими значениями события
         private void LoadEventData()
         {
             TitleBox.Text = _event.Название_события;
-            DescBox.Text = _event.Описание;
-            EventDatePicker.SelectedDate = _event.Дата_события;
-            ProjectComboBox.SelectedValue = _event.ID_проекта;
+            DescBox.Text = _event.Описание ?? string.Empty;
+            PlaceBox.Text = _event.Место_проведения ?? string.Empty;
+
+            // Тип события
+            string typeToFind = string.IsNullOrWhiteSpace(_event.Тип_события) ? "Другое" : _event.Тип_события;
+            foreach (var item in TypeComboBox.Items)
+            {
+                if (item is ComboBoxItem cbi && cbi.Content?.ToString() == typeToFind)
+                {
+                    TypeComboBox.SelectedItem = item;
+                    break;
+                }
+            }
+            if (TypeComboBox.SelectedItem == null) TypeComboBox.SelectedIndex = 4; // Другое
+
+            // Дата и время начала
+            if (_event.Дата_начала.HasValue)
+            {
+                StartDatePicker.SelectedDate = _event.Дата_начала.Value.Date;
+                StartTimeBox.Text = _event.Дата_начала.Value.ToString("HH:mm");
+            }
+            else
+            {
+                StartDatePicker.SelectedDate = DateTime.Today;
+                StartTimeBox.Text = "09:00";
+            }
+
+            // Дата и время окончания
+            if (_event.Дата_окончания.HasValue)
+            {
+                EndDatePicker.SelectedDate = _event.Дата_окончания.Value.Date;
+                EndTimeBox.Text = _event.Дата_окончания.Value.ToString("HH:mm");
+            }
+            else
+            {
+                EndDatePicker.SelectedDate = null;
+                EndTimeBox.Text = string.Empty;
+            }
+
+            // Проект (если задан — задачи подгрузятся в SelectionChanged)
+            if (_event.ID_проекта.HasValue)
+                ProjectComboBox.SelectedValue = _event.ID_проекта.Value;
+            else
+                ProjectComboBox.SelectedIndex = -1;
         }
 
-        // Обработчик нажатия кнопки "Сохранить"
+        private void ProjectComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                int? projectId = ProjectComboBox.SelectedValue as int?;
+                if (projectId.HasValue)
+                {
+                    var tasks = DbHelper.GetTasksByProject(projectId.Value);
+                    TaskComboBox.ItemsSource = tasks;
+                    TaskComboBox.IsEnabled = true;
+
+                    // При первой загрузке восстанавливаем выбранную задачу
+                    if (_isLoading && _event.ID_задачи.HasValue)
+                    {
+                        TaskComboBox.SelectedValue = _event.ID_задачи.Value;
+                    }
+                    else
+                    {
+                        TaskComboBox.SelectedIndex = -1;
+                    }
+                }
+                else
+                {
+                    TaskComboBox.ItemsSource = null;
+                    TaskComboBox.IsEnabled = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка загрузки задач проекта:\n{ex.Message}",
+                    "Ошибка",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private static bool TryParseTime(string text, out TimeSpan time)
+        {
+            return TimeSpan.TryParseExact(text?.Trim(), @"h\:mm", CultureInfo.InvariantCulture, out time)
+                || TimeSpan.TryParseExact(text?.Trim(), @"hh\:mm", CultureInfo.InvariantCulture, out time);
+        }
+
         private void Save_Click(object sender, RoutedEventArgs e)
         {
-            // Получаем данные из полей
             string title = TitleBox.Text.Trim();
             string description = DescBox.Text.Trim();
-            DateTime? eventDate = EventDatePicker.SelectedDate;
-            int? projectId = ProjectComboBox.SelectedValue as int?;
+            string place = PlaceBox.Text.Trim();
+            string type = (TypeComboBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Другое";
 
-            // Валидация: название обязательно
+            DateTime? startDate = StartDatePicker.SelectedDate;
+            DateTime? endDate = EndDatePicker.SelectedDate;
+
+            int? projectId = ProjectComboBox.SelectedValue as int?;
+            int? taskId = TaskComboBox.SelectedValue as int?;
+
+            // Валидация: название
             if (string.IsNullOrWhiteSpace(title))
             {
                 MessageBox.Show("Пожалуйста, введите название события.",
@@ -87,39 +177,84 @@ namespace Командное_управление_проектами.Views
                 return;
             }
 
-            // Валидация: дата обязательна
-            if (!eventDate.HasValue)
+            // Валидация: дата начала
+            if (!startDate.HasValue)
             {
-                MessageBox.Show("Пожалуйста, выберите дату события.",
+                MessageBox.Show("Пожалуйста, выберите дату начала события.",
                     "Ошибка валидации",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
-                EventDatePicker.Focus();
+                StartDatePicker.Focus();
                 return;
             }
 
-            // Обновляем данные события
+            if (!TryParseTime(StartTimeBox.Text, out TimeSpan startTime))
+            {
+                MessageBox.Show("Время начала должно быть в формате ЧЧ:ММ.",
+                    "Ошибка валидации",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                StartTimeBox.Focus();
+                return;
+            }
+
+            DateTime startDateTime = startDate.Value.Date.Add(startTime);
+
+            DateTime? endDateTime = null;
+            bool hasEndDate = endDate.HasValue;
+            bool hasEndTime = !string.IsNullOrWhiteSpace(EndTimeBox.Text);
+
+            if (hasEndDate && hasEndTime)
+            {
+                if (!TryParseTime(EndTimeBox.Text, out TimeSpan endTime))
+                {
+                    MessageBox.Show("Время окончания должно быть в формате ЧЧ:ММ.",
+                        "Ошибка валидации",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    EndTimeBox.Focus();
+                    return;
+                }
+                endDateTime = endDate.Value.Date.Add(endTime);
+
+                if (endDateTime.Value <= startDateTime)
+                {
+                    MessageBox.Show("Дата/время окончания должны быть позже даты/времени начала.",
+                        "Ошибка валидации",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    EndDatePicker.Focus();
+                    return;
+                }
+            }
+            else if (hasEndDate ^ hasEndTime)
+            {
+                MessageBox.Show("Заполните и дату, и время окончания — либо оставьте оба пустыми.",
+                    "Ошибка валидации",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            // Обновление модели
             _event.Название_события = title;
             _event.Описание = string.IsNullOrWhiteSpace(description) ? null : description;
-            _event.Дата_события = eventDate;
+            _event.Место_проведения = string.IsNullOrWhiteSpace(place) ? null : place;
+            _event.Тип_события = type;
+            _event.Дата_начала = startDateTime;
+            _event.Дата_окончания = endDateTime;
             _event.ID_проекта = projectId;
+            _event.ID_задачи = taskId;
 
             try
             {
-                // Обновление события в базе данных
                 DbHelper.UpdateEvent(_event);
 
-                // Формируем сообщение об успехе
-                string projectInfo = projectId.HasValue
-                    ? $"\nПроект: {(ProjectComboBox.SelectedItem as ProjectModel)?.Название_проекта}"
-                    : "";
-
-                MessageBox.Show($"Событие успешно обновлено!\n\nНазвание: {title}\nДата: {eventDate:dd.MM.yyyy}{projectInfo}",
+                MessageBox.Show($"Событие успешно обновлено!",
                     "Успех",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
 
-                // Закрытие окна с успешным результатом
                 this.DialogResult = true;
                 this.Close();
             }
@@ -132,17 +267,14 @@ namespace Командное_управление_проектами.Views
             }
         }
 
-        // Обработка горячих клавиш
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
 
-            // Enter - сохранить изменения (если фокус не на многострочном текстовом поле)
             if (e.Key == Key.Enter && !DescBox.IsFocused)
             {
                 Save_Click(this, new RoutedEventArgs());
             }
-            // Escape - закрыть окно
             else if (e.Key == Key.Escape)
             {
                 this.Close();

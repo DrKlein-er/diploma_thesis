@@ -6,8 +6,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Командное_управление_проектами.Views"
         mc:Ignorable="d"
-        Title="Добавить задачу" Height="870" Width="500"
-        WindowStartupLocation="CenterScreen"
+        Title="Добавить задачу" Height="850" Width="500"
+        WindowStartupLocation="CenterOwner"
         Background="{DynamicResource BackgroundBrush}">
 
     <Window.Resources>

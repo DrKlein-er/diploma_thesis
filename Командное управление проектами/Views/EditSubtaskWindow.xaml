@@ -7,7 +7,7 @@
         xmlns:local="clr-namespace:Командное_управление_проектами.Views"
         mc:Ignorable="d"
         Title="Редактировать подзадачу" Height="670" Width="500"
-        WindowStartupLocation="CenterScreen"
+        WindowStartupLocation="CenterOwner"
         Background="{DynamicResource BackgroundBrush}">
     
     <Window.Resources>

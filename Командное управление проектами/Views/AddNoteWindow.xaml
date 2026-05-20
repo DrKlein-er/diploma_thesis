@@ -6,11 +6,11 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Командное_управление_проектами"
         mc:Ignorable="d"
-       Title="Добавить заметку" Height="570" Width="500" 
-        WindowStartupLocation="CenterScreen"
+       Title="Добавить заметку" Height="640" Width="500" 
+        WindowStartupLocation="CenterOwner"
         Background="{DynamicResource BackgroundBrush}">
+    
     <Window.Resources>
-        <!-- Стиль для заголовков полей -->
         <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -18,7 +18,18 @@
             <Setter Property="Margin" Value="0,0,0,5"/>
         </Style>
 
-        <!-- Стиль для многострочного текста -->
+        <Style x:Key="InputTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Background" Value="{DynamicResource TextBoxBackgroundBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Margin" Value="0,0,0,15"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
         <Style x:Key="MultilineTextBoxStyle" TargetType="TextBox">
             <Setter Property="Height" Value="120"/>
             <Setter Property="Padding" Value="10,8"/>
@@ -34,7 +45,35 @@
             <Setter Property="VerticalContentAlignment" Value="Top"/>
         </Style>
 
-        <!-- Стиль для кнопки -->
+        <!-- Стиль для цветовой кнопки-стикера -->
+        <Style x:Key="ColorSwatchStyle" TargetType="RadioButton">
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="18"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="1"/>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="border" Property="BorderThickness" Value="3"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="border" Property="BorderThickness" Value="2"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="PrimaryButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
             <Setter Property="Foreground" Value="White"/>
@@ -72,54 +111,159 @@
             Margin="20"
             BorderBrush="{DynamicResource BorderBrush}" 
             BorderThickness="1">
-        <StackPanel>
-            <!-- Заголовок окна -->
-            <TextBlock Text="Добавить заметку" 
-                       FontSize="26" 
-                       FontWeight="Bold" 
-                       Foreground="{DynamicResource ForegroundBrush}"
-                       HorizontalAlignment="Center" 
-                       Margin="0,0,0,25"/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Text="Добавить заметку" 
+                           FontSize="26" 
+                           FontWeight="Bold" 
+                           Foreground="{DynamicResource ForegroundBrush}"
+                           HorizontalAlignment="Center" 
+                           Margin="0,0,0,25"/>
 
-            <!-- Поле "Текст заметки" -->
-            <TextBlock Text="Текст заметки:" 
-                       Style="{StaticResource FieldLabelStyle}"/>
-            <TextBox x:Name="NoteTextBox" 
-                     Style="{StaticResource MultilineTextBoxStyle}"
-                     ToolTip="Введите текст заметки"
-                     MaxLength="1000"/>
+                <!-- Заголовок -->
+                <TextBlock Text="Заголовок:" 
+                           Style="{StaticResource FieldLabelStyle}"/>
+                <TextBox x:Name="TitleBox" 
+                         Style="{StaticResource InputTextBoxStyle}"
+                         ToolTip="Краткий заголовок заметки"
+                         MaxLength="150"/>
 
-            <!-- Поле "Дата создания" -->
-            <TextBlock Text="Дата создания:" 
-                       Style="{StaticResource FieldLabelStyle}"/>
-            <DatePicker x:Name="CreationDatePicker"
-                        Margin="0,0,0,15"
-                        ToolTip="Выберите дату создания заметки"/>
+                <!-- Текст заметки -->
+                <TextBlock Text="Текст заметки:" 
+                           Style="{StaticResource FieldLabelStyle}"/>
+                <TextBox x:Name="NoteTextBox" 
+                         Style="{StaticResource MultilineTextBoxStyle}"
+                         ToolTip="Введите текст заметки"
+                         MaxLength="2000"/>
 
-            <!-- Поле "Связанная задача" -->
-            <TextBlock Text="Связанная задача:" 
-                       Style="{StaticResource FieldLabelStyle}"/>
-            <ComboBox x:Name="TaskComboBox" 
-                      Height="35"
-                      Margin="0,0,0,20"
-                      SelectedValuePath="ID_задачи"
-                      ToolTip="Выберите задачу, к которой относится заметка">
-                <ComboBox.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Text="{Binding Название_задачи}" 
-                       Foreground="{DynamicResource ForegroundBrush}"/>
-                    </DataTemplate>
-                </ComboBox.ItemTemplate>
-            </ComboBox>
+                <!-- Цвет стикера -->
+                <TextBlock Text="Цвет:" 
+                           Style="{StaticResource FieldLabelStyle}"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                    <RadioButton x:Name="ColorYellow" Tag="Жёлтый" GroupName="Color"
+                                 Style="{StaticResource ColorSwatchStyle}"
+                                 Background="#FFF59D" ToolTip="Жёлтый" IsChecked="True"/>
+                    <RadioButton x:Name="ColorPink" Tag="Розовый" GroupName="Color"
+                                 Style="{StaticResource ColorSwatchStyle}"
+                                 Background="#F8BBD0" ToolTip="Розовый"/>
+                    <RadioButton x:Name="ColorBlue" Tag="Голубой" GroupName="Color"
+                                 Style="{StaticResource ColorSwatchStyle}"
+                                 Background="#B3E5FC" ToolTip="Голубой"/>
+                    <RadioButton x:Name="ColorGreen" Tag="Зелёный" GroupName="Color"
+                                 Style="{StaticResource ColorSwatchStyle}"
+                                 Background="#C8E6C9" ToolTip="Зелёный"/>
+                    <RadioButton x:Name="ColorGray" Tag="Серый" GroupName="Color"
+                                 Style="{StaticResource ColorSwatchStyle}"
+                                 Background="#E0E0E0" ToolTip="Серый"/>
+                </StackPanel>
 
-            <!-- Кнопка добавления -->
-            <Button Content="Добавить заметку" 
-                    Click="Add_Click" 
-                    Style="{StaticResource PrimaryButtonStyle}"
-                    Width="220"
-                    Height="42"
-                    HorizontalAlignment="Center"
-                    Margin="0,5,0,0"/>
-        </StackPanel>
+                <!-- Закрепление -->
+                <CheckBox x:Name="PinnedCheckBox"
+                          Content="Закрепить заметку (показывать наверху списка)"
+                          FontSize="14"
+                          Foreground="{DynamicResource ForegroundBrush}"
+                          Margin="0,0,0,15"/>
+
+                <!-- Тип привязки -->
+                <TextBlock Text="Привязать к:" 
+                           Style="{StaticResource FieldLabelStyle}"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                    <RadioButton x:Name="LinkNone" Content="Без привязки"
+                                 GroupName="LinkType" IsChecked="True"
+                                 Foreground="{DynamicResource ForegroundBrush}"
+                                 Margin="0,0,15,0"
+                                 Checked="LinkType_Changed"/>
+                    <RadioButton x:Name="LinkProject" Content="Проекту"
+                                 GroupName="LinkType"
+                                 Foreground="{DynamicResource ForegroundBrush}"
+                                 Margin="0,0,15,0"
+                                 Checked="LinkType_Changed"/>
+                    <RadioButton x:Name="LinkTask" Content="Задаче"
+                                 GroupName="LinkType"
+                                 Foreground="{DynamicResource ForegroundBrush}"
+                                 Margin="0,0,15,0"
+                                 Checked="LinkType_Changed"/>
+                    <RadioButton x:Name="LinkSubtask" Content="Подзадаче"
+                                 GroupName="LinkType"
+                                 Foreground="{DynamicResource ForegroundBrush}"
+                                 Checked="LinkType_Changed"/>
+                </StackPanel>
+
+                <!-- Выбор проекта -->
+                <ComboBox x:Name="ProjectComboBox" 
+                          Height="35"
+                          Margin="0,0,0,15" 
+                          SelectedValuePath="ID_проекта"
+                          Visibility="Collapsed"
+                          ToolTip="Выберите проект">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Название_проекта}" 
+                                       Foreground="{DynamicResource ForegroundBrush}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <!-- Выбор задачи -->
+                <ComboBox x:Name="TaskComboBox" 
+                          Height="35"
+                          Margin="0,0,0,15" 
+                          SelectedValuePath="ID_задачи"
+                          Visibility="Collapsed"
+                          SelectionChanged="TaskComboBox_SelectionChanged"
+                          ToolTip="Выберите задачу">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Название_задачи}" 
+                                       Foreground="{DynamicResource ForegroundBrush}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <!-- Выбор подзадачи (двухуровневый: сначала задача, потом подзадача) -->
+                <StackPanel x:Name="SubtaskPanel" Visibility="Collapsed">
+                    <TextBlock Text="Родительская задача:" 
+                               FontSize="12"
+                               Foreground="{DynamicResource ForegroundBrush}"
+                               Margin="0,0,0,5"/>
+                    <ComboBox x:Name="ParentTaskComboBox" 
+                              Height="35"
+                              Margin="0,0,0,10"
+                              SelectedValuePath="ID_задачи"
+                              SelectionChanged="ParentTaskComboBox_SelectionChanged">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Название_задачи}" 
+                                           Foreground="{DynamicResource ForegroundBrush}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock Text="Подзадача:" 
+                               FontSize="12"
+                               Foreground="{DynamicResource ForegroundBrush}"
+                               Margin="0,0,0,5"/>
+                    <ComboBox x:Name="SubtaskComboBox" 
+                              Height="35"
+                              Margin="0,0,0,15"
+                              SelectedValuePath="ID_подзадачи"
+                              IsEnabled="False">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Название_подзадачи}" 
+                                           Foreground="{DynamicResource ForegroundBrush}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+
+                <Button Content="Добавить заметку" 
+                        Click="Add_Click" 
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Width="220"
+                        Height="42"
+                        HorizontalAlignment="Center"
+                        Margin="0,10,0,0"/>
+            </StackPanel>
+        </ScrollViewer>
     </Border>
 </Window>

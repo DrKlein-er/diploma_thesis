@@ -1,39 +1,31 @@
 ﻿using System;
+using System.Globalization;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using Командное_управление_проектами.Helpers;
 using Командное_управление_проектами.Models;
 
 namespace Командное_управление_проектами.Views
 {
-
-    /// Окно редактирования напоминания
-
     public partial class EditReminderWindow : Window
     {
-        private ReminderModel _reminder;
-
-
-        /// Конструктор окна редактирования напоминания
+        private readonly ReminderModel _reminder;
 
         public EditReminderWindow(ReminderModel reminder)
         {
             InitializeComponent();
-            _reminder = reminder;
-
-            // Применяем текущую тему
             ApplyTheme();
-            // Загружаем список задач
+
+            _reminder = reminder ?? throw new ArgumentNullException(nameof(reminder));
+
             LoadTasks();
-            // Заполняем поля данными напоминания
             LoadReminderData();
-            // Устанавливаем фокус на первое поле
+
             TextBoxReminder.Focus();
         }
 
-
-        /// Применение текущей темы приложения к окну
-
+        // Применение текущей темы приложения к окну
         private void ApplyTheme()
         {
             var theme = ThemeManager.GetCurrentTheme();
@@ -49,8 +41,7 @@ namespace Командное_управление_проектами.Views
             this.Resources.MergedDictionaries.Add(themeDict);
         }
 
-
-        /// Загрузка списка задач в ComboBox
+        // Загрузка списка задач в ComboBox
         private void LoadTasks()
         {
             try
@@ -67,25 +58,66 @@ namespace Командное_управление_проектами.Views
             }
         }
 
-
-        /// Загрузка данных напоминания в поля формы
-
+        // Заполнение полей текущими значениями напоминания
         private void LoadReminderData()
         {
-            TextBoxReminder.Text = _reminder.Текст_напоминания;
-            ReminderDatePicker.SelectedDate = _reminder.Дата_напоминания;
-            TaskComboBox.SelectedValue = _reminder.ID_задачи;
+            TextBoxReminder.Text = _reminder.Текст_напоминания ?? string.Empty;
+
+            // Дата и время напоминания
+            if (_reminder.Дата_напоминания.HasValue)
+            {
+                ReminderDatePicker.SelectedDate = _reminder.Дата_напоминания.Value.Date;
+                ReminderTimeBox.Text = _reminder.Дата_напоминания.Value.ToString("HH:mm");
+            }
+            else
+            {
+                ReminderDatePicker.SelectedDate = DateTime.Today;
+                ReminderTimeBox.Text = "09:00";
+            }
+
+            // Статус
+            string status = string.IsNullOrWhiteSpace(_reminder.Статус) ? "Активно" : _reminder.Статус;
+            SelectByContent(StatusComboBox, status, fallbackIndex: 0);
+
+            // Приоритет
+            string priority = string.IsNullOrWhiteSpace(_reminder.Приоритет) ? "Средний" : _reminder.Приоритет;
+            SelectByContent(PriorityComboBox, priority, fallbackIndex: 1);
+
+            // Задача
+            if (_reminder.ID_задачи.HasValue)
+                TaskComboBox.SelectedValue = _reminder.ID_задачи.Value;
+            else
+                TaskComboBox.SelectedIndex = -1;
         }
 
-        /// Обработчик нажатия кнопки "Сохранить"
+        private static void SelectByContent(ComboBox combo, string content, int fallbackIndex)
+        {
+            foreach (var item in combo.Items)
+            {
+                if (item is ComboBoxItem cbi && cbi.Content?.ToString() == content)
+                {
+                    combo.SelectedItem = item;
+                    return;
+                }
+            }
+            combo.SelectedIndex = fallbackIndex;
+        }
+
+        private static bool TryParseTime(string text, out TimeSpan time)
+        {
+            return TimeSpan.TryParseExact(text?.Trim(), @"h\:mm", CultureInfo.InvariantCulture, out time)
+                || TimeSpan.TryParseExact(text?.Trim(), @"hh\:mm", CultureInfo.InvariantCulture, out time);
+        }
+
         private void Save_Click(object sender, RoutedEventArgs e)
         {
-            // Получаем данные из полей
             string text = TextBoxReminder.Text.Trim();
             DateTime? date = ReminderDatePicker.SelectedDate;
+            string status = (StatusComboBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Активно";
+            string priority = (PriorityComboBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Средний";
             int? taskId = TaskComboBox.SelectedValue as int?;
 
-            // Валидация: текст напоминания обязателен
+            // Валидация: текст
             if (string.IsNullOrWhiteSpace(text))
             {
                 MessageBox.Show("Пожалуйста, введите текст напоминания.",
@@ -96,7 +128,6 @@ namespace Командное_управление_проектами.Views
                 return;
             }
 
-            // Валидация: минимальная длина текста
             if (text.Length < 3)
             {
                 MessageBox.Show("Текст напоминания должен содержать минимум 3 символа.",
@@ -107,28 +138,57 @@ namespace Командное_управление_проектами.Views
                 return;
             }
 
-            // Обновление данных напоминания
+            // Валидация: дата
+            if (!date.HasValue)
+            {
+                MessageBox.Show("Пожалуйста, выберите дату напоминания.",
+                    "Ошибка валидации",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                ReminderDatePicker.Focus();
+                return;
+            }
+
+            // Валидация: время
+            if (!TryParseTime(ReminderTimeBox.Text, out TimeSpan time))
+            {
+                MessageBox.Show("Время напоминания должно быть в формате ЧЧ:ММ.",
+                    "Ошибка валидации",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                ReminderTimeBox.Focus();
+                return;
+            }
+
+            DateTime reminderDateTime = date.Value.Date.Add(time);
+
+            // Валидация: задача обязательна
+            if (!taskId.HasValue)
+            {
+                MessageBox.Show("Пожалуйста, выберите задачу, к которой относится напоминание.",
+                    "Ошибка валидации",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                TaskComboBox.Focus();
+                return;
+            }
+
+            // Применяем изменения
             _reminder.Текст_напоминания = text;
-            _reminder.Дата_напоминания = date;
+            _reminder.Дата_напоминания = reminderDateTime;
+            _reminder.Статус = status;
+            _reminder.Приоритет = priority;
             _reminder.ID_задачи = taskId;
 
             try
             {
-                // Обновление напоминания в базе данных
                 DbHelper.UpdateReminder(_reminder);
 
-                // Формируем сообщение об успехе
-                string dateInfo = date.HasValue ? $"\nДата: {date:dd.MM.yyyy}" : "\nДата: не указана";
-                string taskInfo = taskId.HasValue
-                    ? $"\nЗадача: {(TaskComboBox.SelectedItem as TaskModel)?.Название_задачи}"
-                    : "";
-
-                MessageBox.Show($"Напоминание успешно обновлено!\n\nТекст: {text}{dateInfo}{taskInfo}",
+                MessageBox.Show("Напоминание успешно обновлено!",
                     "Успех",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
 
-                // Закрытие окна с успешным результатом
                 this.DialogResult = true;
                 this.Close();
             }
@@ -140,17 +200,15 @@ namespace Командное_управление_проектами.Views
                     MessageBoxImage.Error);
             }
         }
-        /// Обработка горячих клавиш
+
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
 
-            // Ctrl+Enter - сохранить изменения
             if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Control)
             {
                 Save_Click(this, new RoutedEventArgs());
             }
-            // Escape - закрыть окно
             else if (e.Key == Key.Escape)
             {
                 this.Close();

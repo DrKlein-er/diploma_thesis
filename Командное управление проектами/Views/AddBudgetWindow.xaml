@@ -6,8 +6,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Командное_управление_проектами.Views"
         mc:Ignorable="d"
-        Title="Добавить запись в бюджет" Height="400" Width="450"
-        WindowStartupLocation="CenterScreen"
+        Title="Добавить запись в бюджет" Height="380" Width="450"
+        WindowStartupLocation="CenterOwner"
         Background="{DynamicResource BackgroundBrush}">
     <Window.Resources>
         <!-- Стиль для заголовков полей -->

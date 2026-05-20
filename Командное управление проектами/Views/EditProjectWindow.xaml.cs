@@ -133,7 +133,7 @@ namespace Командное_управление_проектами.Views
         {
             try
             {
-                BudgetGrid.ItemsSource = DbHelper.GetBudgetForProject(_project.ID_проекта);
+                BudgetGrid.ItemsSource = DbHelper.GetBudgetByProjectId(_project.ID_проекта);
             }
             catch (Exception ex)
             {
@@ -332,6 +332,7 @@ namespace Командное_управление_проектами.Views
         private void AddBudget_Click(object sender, RoutedEventArgs e)
         {
             var window = new AddBudgetWindow(_project.ID_проекта, _currentUser);
+            window.Owner = this;
             if (window.ShowDialog() == true)
             {
                 LoadBudget();

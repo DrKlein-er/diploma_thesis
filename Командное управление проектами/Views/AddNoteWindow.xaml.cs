@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using Командное_управление_проектами.Helpers;
 using Командное_управление_проектами.Models;
@@ -11,14 +13,13 @@ namespace Командное_управление_проектами.Views
         public AddNoteWindow()
         {
             InitializeComponent();
-            // Применяем текущую тему
             ApplyTheme();
-            // Устанавливаем дату по умолчанию на сегодня
-            CreationDatePicker.SelectedDate = DateTime.Today;
-            // Загружаем список задач
+
+            LoadProjects();
             LoadTasks();
-            // Устанавливаем фокус на текстовое поле
-            NoteTextBox.Focus();
+            LoadParentTasks();
+
+            TitleBox.Focus();
         }
 
         // Применение текущей темы приложения к окну
@@ -37,127 +38,219 @@ namespace Командное_управление_проектами.Views
             this.Resources.MergedDictionaries.Add(themeDict);
         }
 
-        // Загрузка списка задач в ComboBox
+        private void LoadProjects()
+        {
+            try
+            {
+                ProjectComboBox.ItemsSource = DbHelper.GetAllProjects();
+                ProjectComboBox.SelectedIndex = -1;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка загрузки списка проектов:\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         private void LoadTasks()
         {
             try
             {
-                var tasks = DbHelper.GetAllTasks();
-                TaskComboBox.ItemsSource = tasks;
-
-                // Не выбираем ничего по умолчанию - пользователь должен выбрать
+                TaskComboBox.ItemsSource = DbHelper.GetAllTasks();
                 TaskComboBox.SelectedIndex = -1;
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка загрузки списка задач:\n{ex.Message}",
-                    "Ошибка",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private void LoadParentTasks()
+        {
+            try
+            {
+                ParentTaskComboBox.ItemsSource = DbHelper.GetAllTasks();
+                ParentTaskComboBox.SelectedIndex = -1;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка загрузки списка задач:\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // Переключение видимости полей привязки
+        private void LinkType_Changed(object sender, RoutedEventArgs e)
+        {
+            if (!IsLoaded && ProjectComboBox == null) return;
+
+            // По умолчанию всё скрыто
+            ProjectComboBox.Visibility = Visibility.Collapsed;
+            TaskComboBox.Visibility = Visibility.Collapsed;
+            SubtaskPanel.Visibility = Visibility.Collapsed;
+
+            // Сбрасываем выбор
+            ProjectComboBox.SelectedIndex = -1;
+            TaskComboBox.SelectedIndex = -1;
+            ParentTaskComboBox.SelectedIndex = -1;
+            SubtaskComboBox.ItemsSource = null;
+            SubtaskComboBox.IsEnabled = false;
+
+            // Показываем нужный контрол
+            if (LinkProject?.IsChecked == true)
+                ProjectComboBox.Visibility = Visibility.Visible;
+            else if (LinkTask?.IsChecked == true)
+                TaskComboBox.Visibility = Visibility.Visible;
+            else if (LinkSubtask?.IsChecked == true)
+                SubtaskPanel.Visibility = Visibility.Visible;
+        }
+
+        // Для подсветки: при выборе задачи как привязки — ничего не делаем дополнительно
+        private void TaskComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // Заглушка, обработчик нужен только для XAML; при необходимости можно расширить
+        }
+
+        // При выборе родительской задачи в режиме «Подзадача» — подгружаем её подзадачи
+        private void ParentTaskComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                int? parentTaskId = ParentTaskComboBox.SelectedValue as int?;
+                if (parentTaskId.HasValue)
+                {
+                    var subtasks = DbHelper.GetSubtasksByTaskId(parentTaskId.Value);
+                    SubtaskComboBox.ItemsSource = subtasks;
+                    SubtaskComboBox.SelectedIndex = -1;
+                    SubtaskComboBox.IsEnabled = subtasks.Count > 0;
+                }
+                else
+                {
+                    SubtaskComboBox.ItemsSource = null;
+                    SubtaskComboBox.IsEnabled = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка загрузки подзадач:\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // Получение выбранного цвета из RadioButton
+        private string GetSelectedColor()
+        {
+            if (ColorYellow.IsChecked == true) return "Жёлтый";
+            if (ColorPink.IsChecked == true) return "Розовый";
+            if (ColorBlue.IsChecked == true) return "Голубой";
+            if (ColorGreen.IsChecked == true) return "Зелёный";
+            if (ColorGray.IsChecked == true) return "Серый";
+            return "Жёлтый";
         }
 
         // Обработчик нажатия кнопки "Добавить"
         private void Add_Click(object sender, RoutedEventArgs e)
         {
-            // Получаем данные из полей
-            string noteText = NoteTextBox.Text.Trim();
-            DateTime? creationDate = CreationDatePicker.SelectedDate;
-            int? taskId = TaskComboBox.SelectedValue as int?;
+            string title = TitleBox.Text.Trim();
+            string text = NoteTextBox.Text.Trim();
+            string color = GetSelectedColor();
+            bool isPinned = PinnedCheckBox.IsChecked == true;
 
-            // Преобразуем 0 в null для "Не выбрано"
-            if (taskId == 0)
-                taskId = null;
-
-            // Валидация: текст обязателен
-            if (string.IsNullOrWhiteSpace(noteText))
+            // Валидация: заголовок
+            if (string.IsNullOrWhiteSpace(title))
             {
-                MessageBox.Show("Пожалуйста, введите текст заметки.",
-                    "Ошибка валидации",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                NoteTextBox.Focus();
+                MessageBox.Show("Пожалуйста, введите заголовок заметки.",
+                    "Ошибка валидации", MessageBoxButton.OK, MessageBoxImage.Warning);
+                TitleBox.Focus();
                 return;
             }
 
-            // Валидация: минимальная длина текста
-            if (noteText.Length < 3)
+            if (title.Length < 3)
             {
-                MessageBox.Show("Текст заметки должен содержать минимум 3 символа.",
-                    "Ошибка валидации",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                NoteTextBox.Focus();
+                MessageBox.Show("Заголовок должен содержать минимум 3 символа.",
+                    "Ошибка валидации", MessageBoxButton.OK, MessageBoxImage.Warning);
+                TitleBox.Focus();
                 return;
             }
 
-            // Валидация: дата обязательна
-            if (!creationDate.HasValue)
-            {
-                MessageBox.Show("Пожалуйста, выберите дату создания заметки.",
-                    "Ошибка валидации",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                CreationDatePicker.Focus();
-                return;
-            }
+            // Определяем привязку
+            int? projectId = null;
+            int? taskId = null;
+            int? subtaskId = null;
 
-            // Валидация: задача обязательна
-            if (!taskId.HasValue)
+            if (LinkProject.IsChecked == true)
             {
-                MessageBox.Show("Пожалуйста, выберите задачу.\nЗаметка должна быть связана с задачей.",
-                    "Ошибка валидации",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                TaskComboBox.Focus();
-                return;
+                projectId = ProjectComboBox.SelectedValue as int?;
+                if (!projectId.HasValue)
+                {
+                    MessageBox.Show("Выберите проект для привязки заметки.",
+                        "Ошибка валидации", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    ProjectComboBox.Focus();
+                    return;
+                }
             }
+            else if (LinkTask.IsChecked == true)
+            {
+                taskId = TaskComboBox.SelectedValue as int?;
+                if (!taskId.HasValue)
+                {
+                    MessageBox.Show("Выберите задачу для привязки заметки.",
+                        "Ошибка валидации", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    TaskComboBox.Focus();
+                    return;
+                }
+            }
+            else if (LinkSubtask.IsChecked == true)
+            {
+                subtaskId = SubtaskComboBox.SelectedValue as int?;
+                if (!subtaskId.HasValue)
+                {
+                    MessageBox.Show("Выберите родительскую задачу и подзадачу для привязки заметки.",
+                        "Ошибка валидации", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+            }
+            // Если LinkNone — все три ID остаются null, это валидно
 
-            // Создание новой заметки
+            // Создание модели
             NoteModel note = new NoteModel
             {
-                Текст_заметки = noteText,
-                Дата_создания = creationDate,
-                ID_задачи = taskId
+                Заголовок = title,
+                Текст_заметки = string.IsNullOrWhiteSpace(text) ? null : text,
+                Цвет = color,
+                Закреплена = isPinned,
+                Дата_создания = DateTime.Now,
+                ID_проекта = projectId,
+                ID_задачи = taskId,
+                ID_подзадачи = subtaskId
             };
 
             try
             {
-                // Добавление заметки в базу данных
                 DbHelper.AddNote(note);
 
-                // Формируем сообщение об успехе
-                string taskInfo = $"\nСвязана с задачей: {(TaskComboBox.SelectedItem as TaskModel)?.Название_задачи}";
+                MessageBox.Show("Заметка успешно добавлена!",
+                    "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
 
-                MessageBox.Show($"Заметка успешно добавлена!\n\nДата: {creationDate:dd.MM.yyyy}{taskInfo}",
-                    "Успех",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-
-                // Закрытие окна с успешным результатом
                 this.DialogResult = true;
                 this.Close();
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка при добавлении заметки:\n{ex.Message}",
-                    "Ошибка",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        // Обработка горячих клавиш
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
 
-            // Ctrl+Enter - добавить заметку (даже из текстового поля)
             if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Control)
             {
                 Add_Click(this, new RoutedEventArgs());
             }
-            // Escape - закрыть окно
             else if (e.Key == Key.Escape)
             {
                 this.Close();

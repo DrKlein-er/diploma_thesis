@@ -238,6 +238,8 @@
     </ApplicationDefinition>
     <Compile Include="Converters\CountToVisibilityConverter.cs" />
     <Compile Include="Helpers\ChatHelper.cs" />
+    <Compile Include="Helpers\EventConverters.cs" />
+    <Compile Include="Helpers\NoteColorToBrushConverter.cs" />
     <Compile Include="Helpers\NotificationService.cs" />
     <Compile Include="Helpers\PermissionHelper.cs" />
     <Compile Include="Helpers\ReportService.cs" />

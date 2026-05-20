@@ -5,7 +5,7 @@
         Title="Профиль пользователя"
         Height="750" Width="900" 
         ResizeMode="NoResize" 
-        WindowStartupLocation="CenterScreen"
+        WindowStartupLocation="CenterOwner"
         Background="{DynamicResource BackgroundBrush}">
     <Window.Resources>
         <!-- Стиль для кнопок меню -->

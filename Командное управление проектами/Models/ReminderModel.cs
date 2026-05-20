@@ -8,7 +8,10 @@ namespace Командное_управление_проектами.Models
         public int ID_напоминания { get; set; }
         public string Текст_напоминания { get; set; }
         public DateTime? Дата_напоминания { get; set; }
+        public string Статус { get; set; }
+        public string Приоритет { get; set; }
         public int? ID_задачи { get; set; }
+
         public string Название_задачи { get; set; }
     }
 }

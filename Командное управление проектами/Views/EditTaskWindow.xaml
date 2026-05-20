@@ -6,8 +6,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Командное_управление_проектами"
         mc:Ignorable="d"
-        Title="Редактировать задачу" Height="850" Width="800"
-        WindowStartupLocation="CenterScreen"
+        Title="Редактировать задачу" Height="930" Width="800"
+        WindowStartupLocation="CenterOwner"
         Background="{DynamicResource BackgroundBrush}">
 
     <Border Background="{DynamicResource BackgroundBrush}" 

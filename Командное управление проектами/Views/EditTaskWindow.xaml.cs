@@ -415,6 +415,7 @@ namespace Командное_управление_проектами
         private void AddSubtask_Click(object sender, RoutedEventArgs e)
         {
             var addSubtaskWindow = new AddSubtaskWindow(_task.ID_задачи);
+            addSubtaskWindow.Owner = this;
             if (addSubtaskWindow.ShowDialog() == true)
             {
                 DbHelper.LogChange("Подзадача", _task.ID_задачи,
@@ -433,6 +434,7 @@ namespace Командное_управление_проектами
             if (SubtasksGrid.SelectedItem is SubtaskModel selected)
             {
                 var editSubtaskWindow = new EditSubtaskWindow(selected);
+                editSubtaskWindow.Owner = this;
                 if (editSubtaskWindow.ShowDialog() == true)
                 {
                     DbHelper.LogChange("Подзадача", _task.ID_задачи,

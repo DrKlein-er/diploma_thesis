@@ -8,10 +8,15 @@
         xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
         xmlns:local="clr-namespace:Командное_управление_проектами"
         xmlns:converters="clr-namespace:Командное_управление_проектами.Converters"
+        xmlns:h="clr-namespace:Командное_управление_проектами.Helpers"
         mc:Ignorable="d"
         Title="Система управления проектами" Height="850" Width="1500" WindowStartupLocation="CenterScreen"
         WindowState="Maximized" Background="{DynamicResource BackgroundBrush}">
     <Window.Resources>
+        <h:NoteColorToBrushConverter x:Key="NoteColorToBrush"/>
+        <h:EventTypeToBrushConverter x:Key="EventTypeToBrush"/>
+        <h:EventTypeToBackgroundBrushConverter x:Key="EventTypeToBgBrush"/>
+        <h:StringToVisibilityConverter x:Key="StringToVisibility"/>
         <converters:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
 
         <!-- Градиент для верхней панели - адаптируется к теме -->
@@ -283,6 +288,148 @@
             </Setter>
         </Style>
 
+        <!-- Стиль чипа-фильтра по типу события -->
+        <Style x:Key="FilterChipStyle" TargetType="RadioButton">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="Padding" Value="16,5"/>
+            <Setter Property="Foreground" Value="{StaticResource MetaTextBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource BackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="chipBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1.5"
+                                CornerRadius="20"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="chipBorder" Property="BorderBrush" Value="{StaticResource EventMeetingBrush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource EventMeetingBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="chipBorder" Property="Background" Value="{StaticResource EventMeetingBrush}"/>
+                                <Setter TargetName="chipBorder" Property="BorderBrush" Value="{StaticResource EventMeetingBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Стиль кнопки-иконки в футере карточки (28x28, серая) -->
+        <Style x:Key="CardIconButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="{DynamicResource BackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource MetaTextBrush}"/>
+            <Setter Property="Margin" Value="2,0,0,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="iconBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="iconBorder" Property="BorderBrush" Value="{StaticResource EventMeetingBrush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource EventMeetingBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Кнопка-иконка «Удалить» — отдельный стиль с красным hover -->
+        <Style x:Key="CardIconDeleteButtonStyle" TargetType="Button" BasedOn="{StaticResource CardIconButtonStyle}">
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="#E53935"/>
+                    <Setter Property="BorderBrush" Value="#E53935"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Стиль самой карточки события: фон, скругление, hover-тень -->
+        <Style x:Key="EventCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource BackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Margin" Value="0,0,14,14"/>
+            <Setter Property="Width" Value="320"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Effect">
+                        <Setter.Value>
+                            <DropShadowEffect Color="#2196F3"
+                                              BlurRadius="18"
+                                              ShadowDepth="2"
+                                              Opacity="0.18"/>
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Стиль тоггл-кнопок фильтра календаря -->
+        <Style x:Key="CalendarFilterToggleStyle" TargetType="ToggleButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,5"/>
+            <Setter Property="Margin" Value="4,0,0,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="tb"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="tb" Property="Background"
+                                        Value="{StaticResource EventMeetingBrush}"/>
+                                <Setter TargetName="tb" Property="BorderBrush"
+                                        Value="{StaticResource EventMeetingBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="tb" Property="BorderBrush"
+                                        Value="{StaticResource EventMeetingBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
     </Window.Resources>
 
     <DockPanel Background="{DynamicResource BackgroundBrush}">
@@ -388,46 +535,104 @@
             <Grid x:Name="CalendarPanel" Visibility="Visible" Margin="10">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <StackPanel Orientation="Horizontal" 
-                           HorizontalAlignment="Center" 
-                           Margin="0,0,0,10" 
-                           Grid.Row="0">
-                    <Button x:Name="PrevMonthButton" 
-                            Content="◄" 
-                            Click="PrevMonthButton_Click" 
-                            Style="{StaticResource MenuButtonStyle}" 
-                            Width="40" 
-                            Height="40"/>
-                    <TextBlock x:Name="MonthYearLabel" 
-                               FontSize="18" 
-                               FontWeight="Bold" 
-                               Foreground="{DynamicResource ForegroundBrush}"
-                               Margin="10,0" 
-                               VerticalAlignment="Center"/>
-                    <Button x:Name="NextMonthButton" 
-                            Content="►" 
-                            Click="NextMonthButton_Click" 
-                            Style="{StaticResource MenuButtonStyle}" 
-                            Width="40" 
-                            Height="40"/>
-                </StackPanel>
+                <!-- Этап 2: Шапка — навигация слева, фильтры справа -->
+                <Grid Grid.Row="0" Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
 
-                <Border Grid.Row="1" 
-                        Background="{DynamicResource BackgroundBrush}" 
-                        CornerRadius="8" 
-                        Padding="10" 
-                        BorderBrush="{DynamicResource BorderBrush}" 
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="TodayButton"
+                                Content="Сегодня"
+                                Click="TodayButton_Click"
+                                Style="{StaticResource ActionButtonStyle}"
+                                Margin="0,0,8,0"/>
+                        <Button x:Name="PrevMonthButton"
+                                Content="◄"
+                                Click="PrevMonthButton_Click"
+                                Style="{StaticResource MenuButtonStyle}"
+                                Width="36" Height="36"/>
+                        <TextBlock x:Name="MonthYearLabel"
+                                   FontSize="20"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource ForegroundBrush}"
+                                   Margin="12,0"
+                                   VerticalAlignment="Center"/>
+                        <Button x:Name="NextMonthButton"
+                                Content="►"
+                                Click="NextMonthButton_Click"
+                                Style="{StaticResource MenuButtonStyle}"
+                                Width="36" Height="36"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <ToggleButton x:Name="ToggleEvents"
+                                      Content="✔ События"
+                                      IsChecked="True"
+                                      Click="CalendarFilter_Changed"
+                                      Style="{StaticResource CalendarFilterToggleStyle}"/>
+                        <ToggleButton x:Name="ToggleTasks"
+                                      Content="✔ Задачи"
+                                      IsChecked="True"
+                                      Click="CalendarFilter_Changed"
+                                      Style="{StaticResource CalendarFilterToggleStyle}"/>
+                        <ToggleButton x:Name="ToggleReminders"
+                                      Content="✔ Напоминания"
+                                      IsChecked="True"
+                                      Click="CalendarFilter_Changed"
+                                      Style="{StaticResource CalendarFilterToggleStyle}"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Этап 3: Заголовки дней недели -->
+                <Grid Grid.Row="1" Margin="2,0,2,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="ПН" TextAlignment="Center" FontWeight="SemiBold"
+                               Foreground="{DynamicResource ForegroundBrush}" Opacity="0.6"/>
+                    <TextBlock Grid.Column="1" Text="ВТ" TextAlignment="Center" FontWeight="SemiBold"
+                               Foreground="{DynamicResource ForegroundBrush}" Opacity="0.6"/>
+                    <TextBlock Grid.Column="2" Text="СР" TextAlignment="Center" FontWeight="SemiBold"
+                               Foreground="{DynamicResource ForegroundBrush}" Opacity="0.6"/>
+                    <TextBlock Grid.Column="3" Text="ЧТ" TextAlignment="Center" FontWeight="SemiBold"
+                               Foreground="{DynamicResource ForegroundBrush}" Opacity="0.6"/>
+                    <TextBlock Grid.Column="4" Text="ПТ" TextAlignment="Center" FontWeight="SemiBold"
+                               Foreground="{DynamicResource ForegroundBrush}" Opacity="0.6"/>
+                    <TextBlock Grid.Column="5" Text="СБ" TextAlignment="Center" FontWeight="SemiBold"
+                               Foreground="{DynamicResource ForegroundBrush}" Opacity="0.6"/>
+                    <TextBlock Grid.Column="6" Text="ВС" TextAlignment="Center" FontWeight="SemiBold"
+                               Foreground="{DynamicResource ForegroundBrush}" Opacity="0.6"/>
+                </Grid>
+
+                <!-- Этапы 4-5: Сетка ячеек -->
+                <Border Grid.Row="2"
+                        Background="{DynamicResource BackgroundBrush}"
+                        CornerRadius="8"
+                        Padding="4"
+                        BorderBrush="{DynamicResource BorderBrush}"
                         BorderThickness="1">
-                    <ItemsControl x:Name="CalendarItemsControl">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <UniformGrid Columns="7"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                    </ItemsControl>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="CalendarItemsControl">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="7"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </ScrollViewer>
                 </Border>
             </Grid>
 
@@ -819,51 +1024,357 @@
             </Grid>
 
             <!-- ==================== ПАНЕЛЬ СОБЫТИЙ ==================== -->
-            <StackPanel x:Name="EventsPanel" Visibility="Collapsed" Margin="10">
-                <TextBlock Text="События" 
-                           FontSize="28" 
-                           FontWeight="Bold" 
-                           Foreground="{DynamicResource ForegroundBrush}"
-                           Margin="0,0,0,10" 
-                           HorizontalAlignment="Center"/>
+            <StackPanel x:Name="EventsPanel" Visibility="Collapsed" Margin="20">
 
-                <Border Background="{DynamicResource BackgroundBrush}" 
-                        CornerRadius="8" 
-                        Padding="15" 
-                        BorderBrush="{DynamicResource BorderBrush}" 
-                        BorderThickness="1">
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                            <Button x:Name="AddEventBtn" 
-                                   Content="Добавить событие" 
-                                   Click="AddEventBtn_Click" 
-                                   Margin="0,0,10,0"
-                                   Style="{StaticResource AddButtonStyle}"/>
-                            <Button x:Name="EditEventBtn" 
-                                   Content="Редактировать" 
-                                   Click="EditEventBtn_Click" 
-                                   Margin="0,0,10,0"
-                                   Style="{StaticResource EditButtonStyle}"/>
-                            <Button x:Name="DeleteEventBtn" 
-                                   Content="Удалить" 
-                                   Click="DeleteEventBtn_Click"
-                                   Style="{StaticResource DeleteButtonStyle}"/>
+                <!-- ───── Шапка: заголовок + кнопка «Добавить» ───── -->
+                <Grid Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0"
+                               Text="События"
+                               FontSize="24"
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource ForegroundBrush}"
+                               VerticalAlignment="Center"/>
+
+                    <Button Grid.Column="1"
+                            x:Name="AddEventBtn"
+                            Click="AddEventBtn_Click"
+                            Background="{StaticResource EventMeetingBrush}"
+                            Foreground="White"
+                            BorderThickness="0"
+                            Padding="18,8"
+                            FontSize="13"
+                            FontWeight="SemiBold"
+                            Cursor="Hand">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}"
+                                        CornerRadius="6"
+                                        Padding="{TemplateBinding Padding}">
+                                    <StackPanel Orientation="Horizontal"
+                                                VerticalAlignment="Center">
+                                        <TextBlock Text="+"
+                                                   FontSize="18"
+                                                   FontWeight="Bold"
+                                                   Margin="0,-2,8,0"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Text="Добавить событие"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Opacity" Value="0.88"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </Grid>
+
+
+
+                <!-- ───── Фильтры по типу + поле поиска ───── -->
+                <Grid Margin="0,0,0,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Чипы-фильтры (RadioButton с группой) -->
+                    <StackPanel Grid.Column="0"
+                                Orientation="Horizontal"
+                                VerticalAlignment="Center">
+
+                        <TextBlock Text="Тип:"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource MetaTextBrush}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,10,0"/>
+
+                        <RadioButton x:Name="ChipAll"
+                                     Content="Все"
+                                     GroupName="EventTypeFilter"
+                                     IsChecked="True"
+                                     Style="{StaticResource FilterChipStyle}"
+                                     Checked="EventTypeFilter_Changed"/>
+                        <RadioButton x:Name="ChipMeeting"
+                                     Content="Встреча"
+                                     GroupName="EventTypeFilter"
+                                     Style="{StaticResource FilterChipStyle}"
+                                     Checked="EventTypeFilter_Changed"/>
+                        <RadioButton x:Name="ChipDeadline"
+                                     Content="Дедлайн"
+                                     GroupName="EventTypeFilter"
+                                     Style="{StaticResource FilterChipStyle}"
+                                     Checked="EventTypeFilter_Changed"/>
+                        <RadioButton x:Name="ChipPresent"
+                                     Content="Презентация"
+                                     GroupName="EventTypeFilter"
+                                     Style="{StaticResource FilterChipStyle}"
+                                     Checked="EventTypeFilter_Changed"/>
+                        <RadioButton x:Name="ChipPersonal"
+                                     Content="Личное"
+                                     GroupName="EventTypeFilter"
+                                     Style="{StaticResource FilterChipStyle}"
+                                     Checked="EventTypeFilter_Changed"/>
+                    </StackPanel>
+
+                    <!-- Поле поиска -->
+                    <StackPanel Grid.Column="1"
+                                Orientation="Horizontal"
+                                VerticalAlignment="Center">
+                        <TextBlock Text="Поиск:"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource MetaTextBrush}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,10,0"/>
+                        <TextBox x:Name="EventSearchBox"
+                                 Width="240"
+                                 Height="32"
+                                 FontSize="13"
+                                 Padding="10,5"
+                                 VerticalContentAlignment="Center"
+                                 Background="{DynamicResource TextBoxBackgroundBrush}"
+                                 Foreground="{DynamicResource ForegroundBrush}"
+                                 BorderBrush="{DynamicResource BorderBrush}"
+                                 BorderThickness="1"
+                                 TextChanged="EventSearchBox_TextChanged"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- ───── Счётчик отфильтрованных событий ───── -->
+                <TextBlock x:Name="EventsCountLabel"
+                           Text="0 событий"
+                           FontSize="11"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource MetaTextBrush}"
+                           Margin="0,0,0,10"/>
+                <!-- ───── Контейнер карточек с прокруткой ───── -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              MaxHeight="600">
+
+                    <!-- Empty state — если карточек нет -->
+                    <Grid>
+                        <StackPanel x:Name="EventsEmptyState"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Margin="0,60,0,0"
+                                    Visibility="Collapsed">
+                            <Border Background="{StaticResource EventMeetingBgBrush}"
+                                    Width="64" Height="64"
+                                    CornerRadius="32"
+                                    Margin="0,0,0,14">
+                                <TextBlock Text="📅"
+                                           FontSize="32"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="Нет событий"
+                                       FontSize="15"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource MetaTextBrush}"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,0,0,4"/>
+                            <TextBlock Text="Попробуйте изменить фильтр или поисковый запрос"
+                                       FontSize="13"
+                                       Foreground="{StaticResource MetaTextBrush}"
+                                       HorizontalAlignment="Center"/>
                         </StackPanel>
 
-                        <DataGrid x:Name="EventsGrid" 
-                                 AutoGenerateColumns="False" 
-                                 IsReadOnly="True" 
-                                 Height="300">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="ID" Binding="{Binding ID_события}" Width="40"/>
-                                <DataGridTextColumn Header="Название" Binding="{Binding Название_события}" Width="*"/>
-                                <DataGridTextColumn Header="Описание" Binding="{Binding Описание}" Width="*"/>
-                                <DataGridTextColumn Header="Дата" Binding="{Binding Дата_события, StringFormat='dd.MM.yyyy'}" Width="*"/>
-                                <DataGridTextColumn Header="Проект" Binding="{Binding Название_проекта}" Width="*"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
-                    </StackPanel>
-                </Border>
+                        <!-- Сетка карточек -->
+                        <ItemsControl x:Name="EventsItemsControl">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource EventCardStyle}">
+                                        <Border.Clip>
+                                            <!-- Чтобы цветная полоска не вылезала за скруглённые углы -->
+                                            <RectangleGeometry RadiusX="10" RadiusY="10" Rect="0,0,320,260"/>
+                                        </Border.Clip>
+                                        <StackPanel>
+                                            <!-- Цветная полоска сверху (4px) -->
+                                            <Border Height="4"
+                                                    Background="{Binding Тип_события, Converter={StaticResource EventTypeToBrush}}"/>
+
+                                            <!-- Тело карточки -->
+                                            <StackPanel Margin="16,14,16,14">
+
+                                                <!-- Верхний ряд: бейдж типа + ID -->
+                                                <Grid Margin="0,0,0,8">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <!-- Бейдж типа: цветная капсула с точкой -->
+                                                    <Border Grid.Column="0"
+                                                            HorizontalAlignment="Left"
+                                                            Background="{Binding Тип_события, Converter={StaticResource EventTypeToBgBrush}}"
+                                                            CornerRadius="20"
+                                                            Padding="11,3">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Ellipse Width="7" Height="7"
+                                                                     Fill="{Binding Тип_события, Converter={StaticResource EventTypeToBrush}}"
+                                                                     VerticalAlignment="Center"
+                                                                     Margin="0,0,5,0"/>
+                                                            <TextBlock Text="{Binding Тип_события}"
+                                                                       FontSize="12"
+                                                                       FontWeight="SemiBold"
+                                                                       Foreground="{Binding Тип_события, Converter={StaticResource EventTypeToBrush}}"
+                                                                       VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                    </Border>
+
+                                                    <!-- ID -->
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="{Binding ID_события, StringFormat='#{0}'}"
+                                                               FontSize="12"
+                                                               FontWeight="Medium"
+                                                               Foreground="{StaticResource MetaIconBrush}"
+                                                               VerticalAlignment="Center"/>
+                                                </Grid>
+
+                                                <!-- Название события -->
+                                                <TextBlock Text="{Binding Название_события}"
+                                                           FontSize="15"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource ForegroundBrush}"
+                                                           TextWrapping="Wrap"
+                                                           Margin="0,0,0,10"/>
+
+                                                <!-- Метаданные -->
+                                                <StackPanel>
+                                                    <!-- Дата -->
+                                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                        <TextBlock Text="📅"
+                                                                   FontSize="13"
+                                                                   Margin="0,0,7,0"
+                                                                   VerticalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding Дата_начала, StringFormat='dd.MM.yyyy'}"
+                                                                   FontSize="13"
+                                                                   Foreground="{StaticResource MetaTextBrush}"
+                                                                   VerticalAlignment="Center"/>
+                                                    </StackPanel>
+
+                                                    <!-- Время (всегда показываем) -->
+                                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                        <TextBlock Text="🕒"
+                                                                   FontSize="13"
+                                                                   Margin="0,0,7,0"
+                                                                   VerticalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding ВремяОтображение}"
+                                                                   FontSize="13"
+                                                                   Foreground="{StaticResource MetaTextBrush}"
+                                                                   VerticalAlignment="Center"/>
+                                                    </StackPanel>
+
+                                                    <!-- Место (скрывается, если пусто) -->
+                                                    <StackPanel Orientation="Horizontal"
+                                                                Margin="0,0,0,4"
+                                                                Visibility="{Binding Место_проведения, Converter={StaticResource StringToVisibility}}">
+                                                        <TextBlock Text="📍"
+                                                                   FontSize="13"
+                                                                   Margin="0,0,7,0"
+                                                                   VerticalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding Место_проведения}"
+                                                                   FontSize="13"
+                                                                   Foreground="{StaticResource MetaTextBrush}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   VerticalAlignment="Center"/>
+                                                    </StackPanel>
+
+                                                    <!-- Задача (скрывается, если пусто) -->
+                                                    <StackPanel Orientation="Horizontal"
+                                                                Visibility="{Binding Название_задачи, Converter={StaticResource StringToVisibility}}">
+                                                        <TextBlock Text="✓"
+                                                                   FontSize="13"
+                                                                   Margin="0,0,7,0"
+                                                                   VerticalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding Название_задачи}"
+                                                                   FontSize="13"
+                                                                   Foreground="{StaticResource MetaTextBrush}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </StackPanel>
+
+                                            <!-- Футер: проект + кнопки -->
+                                            <Border Background="{StaticResource CardFooterBgBrush}"
+                                                    BorderBrush="{DynamicResource BorderBrush}"
+                                                    BorderThickness="0,1,0,0"
+                                                    Padding="14,8">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <!-- Тег проекта -->
+                                                    <Border Grid.Column="0"
+                                                            HorizontalAlignment="Left"
+                                                            Background="{DynamicResource BackgroundBrush}"
+                                                            BorderBrush="{DynamicResource BorderBrush}"
+                                                            BorderThickness="1"
+                                                            CornerRadius="6"
+                                                            Padding="9,2"
+                                                            MaxWidth="180">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="📁"
+                                                                       FontSize="11"
+                                                                       Margin="0,0,5,0"
+                                                                       VerticalAlignment="Center"/>
+                                                            <TextBlock Text="{Binding ПроектОтображение}"
+                                                                       FontSize="12"
+                                                                       FontWeight="Medium"
+                                                                       Foreground="{StaticResource MetaTextBrush}"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                    </Border>
+
+                                                    <!-- Кнопки-иконки -->
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                        <Button Style="{StaticResource CardIconButtonStyle}"
+                                                                Tag="{Binding ID_события}"
+                                                                Click="EditEventCard_Click"
+                                                                ToolTip="Редактировать">
+                                                            <TextBlock Text="✏"
+                                                                       FontSize="13"
+                                                                       VerticalAlignment="Center"/>
+                                                        </Button>
+                                                        <Button Style="{StaticResource CardIconDeleteButtonStyle}"
+                                                                Tag="{Binding ID_события}"
+                                                                Click="DeleteEventCard_Click"
+                                                                ToolTip="Удалить">
+                                                            <TextBlock Text="🗑"
+                                                                       FontSize="13"
+                                                                       VerticalAlignment="Center"/>
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
+                </ScrollViewer>
+
             </StackPanel>
 
             <!-- ==================== ПАНЕЛЬ НАПОМИНАНИЙ ==================== -->
@@ -901,12 +1412,40 @@
                         <DataGrid x:Name="RemindersGrid" 
                                  AutoGenerateColumns="False" 
                                  IsReadOnly="True" 
-                                 Height="300">
+                                 Height="400">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="ID" Binding="{Binding ID_напоминания}" Width="40"/>
-                                <DataGridTextColumn Header="Текст" Binding="{Binding Текст_напоминания}" Width="*"/>
-                                <DataGridTextColumn Header="Дата" Binding="{Binding Дата_напоминания, StringFormat='dd.MM.yyyy'}" Width="100"/>
-                                <DataGridTextColumn Header="Задача" Binding="{Binding Название_задачи}" Width="150"/>
+                                <DataGridTextColumn Header="Текст" Binding="{Binding Текст_напоминания}" Width="2*"/>
+                                <DataGridTextColumn Header="Когда" Binding="{Binding Дата_напоминания, StringFormat='dd.MM.yyyy HH:mm'}" Width="140"/>
+                                <DataGridTextColumn Header="Статус" Binding="{Binding Статус}" Width="100"/>
+                                <DataGridTextColumn Header="Приоритет" Binding="{Binding Приоритет}" Width="100"/>
+                                <DataGridTextColumn Header="Задача" Binding="{Binding Название_задачи}" Width="*"/>
+                                <DataGridTemplateColumn Header="Действия" Width="220">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Button Content="⏰ +15 мин" 
+                                                        Click="SnoozeReminder15_Click"
+                                                        Tag="{Binding ID_напоминания}"
+                                                        Margin="2"
+                                                        Padding="6,2"
+                                                        ToolTip="Отложить на 15 минут"/>
+                                                <Button Content="⏰ +1 ч" 
+                                                        Click="SnoozeReminder60_Click"
+                                                        Tag="{Binding ID_напоминания}"
+                                                        Margin="2"
+                                                        Padding="6,2"
+                                                        ToolTip="Отложить на 1 час"/>
+                                                <Button Content="✓"
+                                                        Click="MarkReminderDone_Click"
+                                                        Tag="{Binding ID_напоминания}"
+                                                        Margin="2"
+                                                        Padding="6,2"
+                                                        ToolTip="Отметить как выполненное"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                             </DataGrid.Columns>
                         </DataGrid>
                     </StackPanel>
@@ -948,12 +1487,65 @@
                         <DataGrid x:Name="NotesGrid" 
                                  AutoGenerateColumns="False" 
                                  IsReadOnly="True" 
-                                 Height="300">
+                                 Height="400">
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Setter Property="Background" Value="{Binding Цвет, Converter={StaticResource NoteColorToBrush}}"/>
+                                    <Setter Property="Foreground" Value="Black"/>
+                                </Style>
+                            </DataGrid.RowStyle>
                             <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="📌" Width="40">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="📌"
+                                                       FontSize="16"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="Black">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Закреплена}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                                 <DataGridTextColumn Header="ID" Binding="{Binding ID_заметки}" Width="40"/>
-                                <DataGridTextColumn Header="Текст" Binding="{Binding Текст_заметки}" Width="*"/>
-                                <DataGridTextColumn Header="Дата" Binding="{Binding Дата_создания, StringFormat='dd.MM.yyyy'}" Width="100"/>
-                                <DataGridTextColumn Header="Задача" Binding="{Binding Название_задачи}" Width="150"/>
+                                <DataGridTextColumn Header="Заголовок" Binding="{Binding Заголовок}" Width="*"/>
+                                <DataGridTextColumn Header="Текст" Binding="{Binding Текст_заметки}" Width="2*"/>
+                                <DataGridTextColumn Header="Создана" Binding="{Binding Дата_создания, StringFormat='dd.MM.yyyy HH:mm'}" Width="140"/>
+                                <DataGridTextColumn Header="Привязка" Binding="{Binding ПривязкаОтображение}" Width="*"/>
+                                <DataGridTemplateColumn Header="Действия" Width="100">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Click="ToggleNotePin_Click"
+                                                    Tag="{Binding ID_заметки}"
+                                                    Margin="2"
+                                                    Padding="6,2"
+                                                    Foreground="Black">
+                                                <Button.Style>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="Content" Value="📌 Закрепить"/>
+                                                        <Setter Property="ToolTip" Value="Закрепить заметку"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Закреплена}" Value="True">
+                                                                <Setter Property="Content" Value="📌 Снять"/>
+                                                                <Setter Property="ToolTip" Value="Открепить заметку"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                             </DataGrid.Columns>
                         </DataGrid>
                     </StackPanel>

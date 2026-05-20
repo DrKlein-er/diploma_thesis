@@ -6,12 +6,11 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Командное_управление_проектами.Views"
         mc:Ignorable="d"
-        Title="Редактировать событие" Height="610" Width="500"
-        WindowStartupLocation="CenterScreen"
+        Title="Редактировать событие" Height="880" Width="520"
+        WindowStartupLocation="CenterOwner"
         Background="{DynamicResource BackgroundBrush}">
-    
+
     <Window.Resources>
-        <!-- Стиль для заголовков полей -->
         <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -19,7 +18,6 @@
             <Setter Property="Margin" Value="0,0,0,5"/>
         </Style>
 
-        <!-- Стиль для текстовых полей -->
         <Style x:Key="InputTextBoxStyle" TargetType="TextBox">
             <Setter Property="Height" Value="35"/>
             <Setter Property="Padding" Value="10,5"/>
@@ -32,7 +30,6 @@
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
 
-        <!-- Стиль для многострочного текста -->
         <Style x:Key="MultilineTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource InputTextBoxStyle}">
             <Setter Property="Height" Value="80"/>
             <Setter Property="AcceptsReturn" Value="True"/>
@@ -42,7 +39,6 @@
             <Setter Property="Padding" Value="10,8"/>
         </Style>
 
-        <!-- Стиль для кнопки -->
         <Style x:Key="PrimaryButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
             <Setter Property="Foreground" Value="White"/>
@@ -80,63 +76,112 @@
             Margin="20"
             BorderBrush="{DynamicResource BorderBrush}" 
             BorderThickness="1">
-        <StackPanel>
-            <!-- Заголовок окна -->
-            <TextBlock Text="Редактировать событие" 
-                       FontSize="26" 
-                       FontWeight="Bold" 
-                       Foreground="{DynamicResource ForegroundBrush}"
-                       HorizontalAlignment="Center" 
-                       Margin="0,0,0,25"/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Text="Редактировать событие" 
+                           FontSize="26" 
+                           FontWeight="Bold" 
+                           Foreground="{DynamicResource ForegroundBrush}"
+                           HorizontalAlignment="Center" 
+                           Margin="0,0,0,25"/>
 
-            <!-- Поле "Название" -->
-            <TextBlock Text="Название события:" 
-                       Style="{StaticResource FieldLabelStyle}"/>
-            <TextBox x:Name="TitleBox" 
-                     Style="{StaticResource InputTextBoxStyle}"
-                     ToolTip="Введите название события"
-                     MaxLength="100"/>
+                <TextBlock Text="Название события:" 
+                           Style="{StaticResource FieldLabelStyle}"/>
+                <TextBox x:Name="TitleBox" 
+                         Style="{StaticResource InputTextBoxStyle}"
+                         MaxLength="100"/>
 
-            <!-- Поле "Описание" -->
-            <TextBlock Text="Описание:" 
-                       Style="{StaticResource FieldLabelStyle}"/>
-            <TextBox x:Name="DescBox" 
-                     Style="{StaticResource MultilineTextBoxStyle}"
-                     ToolTip="Введите описание события"
-                     MaxLength="500"/>
+                <TextBlock Text="Тип события:" 
+                           Style="{StaticResource FieldLabelStyle}"/>
+                <ComboBox x:Name="TypeComboBox"
+                          Height="35"
+                          Margin="0,0,0,15">
+                    <ComboBoxItem Content="Встреча"/>
+                    <ComboBoxItem Content="Дедлайн"/>
+                    <ComboBoxItem Content="Презентация"/>
+                    <ComboBoxItem Content="Личное"/>
+                    <ComboBoxItem Content="Другое"/>
+                </ComboBox>
 
-            <!-- Поле "Дата события" -->
-            <TextBlock Text="Дата события:" 
-                       Style="{StaticResource FieldLabelStyle}"/>
-            <DatePicker x:Name="EventDatePicker" 
-                        Height="35"
-                        Margin="0,0,0,15"
-                        ToolTip="Выберите дату события"/>
+                <TextBlock Text="Описание:" 
+                           Style="{StaticResource FieldLabelStyle}"/>
+                <TextBox x:Name="DescBox" 
+                         Style="{StaticResource MultilineTextBoxStyle}"
+                         MaxLength="500"/>
 
-            <!-- Поле "Проект" -->
-            <TextBlock Text="Связанный проект (необязательно):" 
-                       Style="{StaticResource FieldLabelStyle}"/>
-            <ComboBox x:Name="ProjectComboBox" 
-                      Height="35"
-                      Margin="0,0,0,20" 
-                      SelectedValuePath="ID_проекта"
-                      ToolTip="Выберите проект, если событие связано с проектом">
-                <ComboBox.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Text="{Binding Название_проекта}" 
-                                   Foreground="{DynamicResource ForegroundBrush}"/>
-                    </DataTemplate>
-                </ComboBox.ItemTemplate>
-            </ComboBox>
+                <TextBlock Text="Дата начала:" 
+                           Style="{StaticResource FieldLabelStyle}"/>
+                <Grid Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="90"/>
+                    </Grid.ColumnDefinitions>
+                    <DatePicker x:Name="StartDatePicker" Grid.Column="0"/>
+                    <TextBox x:Name="StartTimeBox" Grid.Column="2"
+                             Style="{StaticResource InputTextBoxStyle}"
+                             Margin="0"
+                             MaxLength="5"/>
+                </Grid>
 
-            <!-- Кнопка сохранения -->
-            <Button Content="Сохранить изменения" 
-                    Click="Save_Click" 
-                    Style="{StaticResource PrimaryButtonStyle}"
-                    Width="220"
-                    Height="42"
-                    HorizontalAlignment="Center"
-                    Margin="0,5,0,0"/>
-        </StackPanel>
+                <TextBlock Text="Дата окончания (необязательно):" 
+                           Style="{StaticResource FieldLabelStyle}"/>
+                <Grid Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="90"/>
+                    </Grid.ColumnDefinitions>
+                    <DatePicker x:Name="EndDatePicker" Grid.Column="0"/>
+                    <TextBox x:Name="EndTimeBox" Grid.Column="2"
+                             Style="{StaticResource InputTextBoxStyle}"
+                             Margin="0"
+                             MaxLength="5"/>
+                </Grid>
+
+                <TextBlock Text="Место проведения:" 
+                           Style="{StaticResource FieldLabelStyle}"/>
+                <TextBox x:Name="PlaceBox" 
+                         Style="{StaticResource InputTextBoxStyle}"
+                         MaxLength="200"/>
+
+                <TextBlock Text="Связанный проект:" 
+                           Style="{StaticResource FieldLabelStyle}"/>
+                <ComboBox x:Name="ProjectComboBox" 
+                          Height="35"
+                          Margin="0,0,0,15" 
+                          SelectedValuePath="ID_проекта"
+                          SelectionChanged="ProjectComboBox_SelectionChanged">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Название_проекта}" 
+                                       Foreground="{DynamicResource ForegroundBrush}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <TextBlock Text="Связанная задача:" 
+                           Style="{StaticResource FieldLabelStyle}"/>
+                <ComboBox x:Name="TaskComboBox" 
+                          Height="35"
+                          Margin="0,0,0,20" 
+                          SelectedValuePath="ID_задачи">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Название_задачи}" 
+                                       Foreground="{DynamicResource ForegroundBrush}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <Button Content="Сохранить изменения" 
+                        Click="Save_Click" 
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Width="220"
+                        Height="42"
+                        HorizontalAlignment="Center"
+                        Margin="0,5,0,0"/>
+            </StackPanel>
+        </ScrollViewer>
     </Border>
 </Window>

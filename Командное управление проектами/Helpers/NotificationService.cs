@@ -50,9 +50,8 @@ namespace Командное_управление_проектами.Helpers
             _currentUser = user;
             _notifications.Clear();
 
-            // Запускаем таймер проверки дедлайнов каждые 30 минут
             _checkTimer = new DispatcherTimer();
-            _checkTimer.Interval = TimeSpan.FromMinutes(30);
+            _checkTimer.Interval = TimeSpan.FromMinutes(1);
             _checkTimer.Tick += CheckDeadlines;
             _checkTimer.Start();
 
@@ -252,49 +251,102 @@ namespace Командное_управление_проектами.Helpers
         }
         private void CheckReminders(DateTime date)
         {
-            var reminders = DbHelper.GetRemindersByDate(date);
-            foreach (var reminderText in reminders)
-            {
-                // Проверяем, не создано ли уже уведомление для этого напоминания
-                bool alreadyNotified = _notifications.Any(n =>
-                    n.Тип == "Напоминание" &&
-                    n.Текст == reminderText &&
-                    n.Дата_создания.Date == date);
+            // Получаем напоминания, у которых уже наступило время
+            var dueReminders = DbHelper.GetDueReminders();
 
-                if (!alreadyNotified)
+            // Фильтр: только напоминания, привязанные к задачам текущего пользователя
+            // (или общие, без привязки)
+            foreach (var reminder in dueReminders)
+            {
+                // Проверка ответственного по задаче
+                if (reminder.ID_задачи.HasValue)
                 {
-                    AddNotification(
-                        "🔔 Напоминание",
-                        reminderText,
-                        "Напоминание",
-                        priority: "Средний"
-                    );
+                    var task = DbHelper.GetTaskById(reminder.ID_задачи.Value);
+                    if (task != null && task.ID_ответственного != _currentUser.ID_сотрудника)
+                        continue;
                 }
+
+                // Проверяем, не показывали ли это напоминание в текущей сессии
+                bool alreadyShown = _notifications.Any(n =>
+                    n.Тип == "Напоминание" &&
+                    n.ID_связанного_объекта == reminder.ID_напоминания);
+
+                if (alreadyShown)
+                    continue;
+
+                // Иконка по приоритету
+                string icon = reminder.Приоритет == "Высокий" ? "🔴"
+                            : reminder.Приоритет == "Низкий" ? "🔵"
+                                                              : "🔔";
+
+                string title = $"{icon} Напоминание" +
+                               (reminder.Приоритет == "Высокий" ? " (важно)" : "");
+
+                AddNotification(
+                    title,
+                    reminder.Текст_напоминания,
+                    "Напоминание",
+                    reminder.ID_напоминания,
+                    reminder.Приоритет
+                );
+
+                // Отмечаем напоминание в БД как сработавшее
+                DbHelper.SetReminderStatus(reminder.ID_напоминания, "Сработало");
             }
         }
         private void CheckEvents(DateTime date)
         {
+            // События, у которых Дата_начала приходится на сегодня
             var events = DbHelper.GetEventsByDate(date);
+
             foreach (var ev in events)
             {
-                // Проверяем, не создано ли уже уведомление для этого события
                 bool alreadyNotified = _notifications.Any(n =>
                     n.Тип == "Событие" &&
                     n.ID_связанного_объекта == ev.ID_события &&
                     n.Дата_создания.Date == date);
 
-                if (!alreadyNotified)
+                if (alreadyNotified)
+                    continue;
+
+                // Иконка по типу события
+                // Иконка по типу события
+                string icon;
+                switch (ev.Тип_события)
                 {
-                    AddNotification(
-                        "📅 Событие сегодня",
-                        $"{ev.Название_события}" + (!string.IsNullOrEmpty(ev.Описание) ? $" - {ev.Описание}" : ""),
-                        "Событие",
-                        ev.ID_события,
-                        "Средний"
-                    );
+                    case "Встреча": icon = "👥"; break;
+                    case "Дедлайн": icon = "⏰"; break;
+                    case "Презентация": icon = "📊"; break;
+                    case "Личное": icon = "👤"; break;
+                    default: icon = "📅"; break;
                 }
+
+                // Текст: время + место + описание
+                var parts = new List<string>();
+                if (ev.Дата_начала.HasValue)
+                {
+                    string timeText = ev.Дата_окончания.HasValue
+                        ? $"{ev.Дата_начала.Value:HH:mm}–{ev.Дата_окончания.Value:HH:mm}"
+                        : $"{ev.Дата_начала.Value:HH:mm}";
+                    parts.Add($"🕒 {timeText}");
+                }
+                if (!string.IsNullOrWhiteSpace(ev.Место_проведения))
+                    parts.Add($"📍 {ev.Место_проведения}");
+                if (!string.IsNullOrWhiteSpace(ev.Описание))
+                    parts.Add(ev.Описание);
+
+                string body = $"{ev.Название_события}\n{string.Join("  •  ", parts)}";
+
+                AddNotification(
+                    $"{icon} Событие сегодня",
+                    body,
+                    "Событие",
+                    ev.ID_события,
+                    "Средний"
+                );
             }
         }
+        
         /// Показать всплывающее окно 
 
         private void ShowToast(NotificationModel notification)

@@ -1,5 +1,6 @@
 ﻿using DevExpress.Xpo;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,7 +12,7 @@ namespace Командное_управление_проектами.Helpers
 {
     public static class SessionManager
     {
-        private static readonly Dictionary<string, UserSession> ActiveSessions = new Dictionary<string, UserSession>();
+        private static readonly ConcurrentDictionary<string, UserSession> ActiveSessions = new ConcurrentDictionary<string, UserSession>();
         private static readonly TimeSpan SessionTimeout = TimeSpan.FromHours(2);
 
         public static string CreateSession(UserModel user)
@@ -35,9 +36,9 @@ namespace Командное_управление_проектами.Helpers
         {
             CleanExpiredSessions();
 
-            if (ActiveSessions.ContainsKey(sessionId))
+            if (ActiveSessions.TryGetValue(sessionId, out UserSession session))
             {
-                ActiveSessions[sessionId].LastActivity = DateTime.Now;
+                session.LastActivity = DateTime.Now;
                 return true;
             }
             return false;
@@ -45,26 +46,23 @@ namespace Командное_управление_проектами.Helpers
 
         public static UserModel GetUser(string sessionId)
         {
-            if (ValidateSession(sessionId))
+            if (ValidateSession(sessionId) && ActiveSessions.TryGetValue(sessionId, out UserSession session))
             {
-                return ActiveSessions[sessionId].User;
+                return session.User;
             }
             return null;
         }
 
         public static void Logout(string sessionId)
         {
-            if (ActiveSessions.ContainsKey(sessionId))
-            {
-                ActiveSessions.Remove(sessionId);
-            }
+            ActiveSessions.TryRemove(sessionId, out _);
         }
 
         public static void UpdateUserData(string sessionId, UserModel updatedUser)
         {
-            if (ActiveSessions.ContainsKey(sessionId))
+            if (ActiveSessions.TryGetValue(sessionId, out UserSession session))
             {
-                ActiveSessions[sessionId].User = updatedUser;
+                session.User = updatedUser;
             }
         }
 
@@ -77,7 +75,7 @@ namespace Командное_управление_проектами.Helpers
 
             foreach (var sessionId in expiredSessions)
             {
-                ActiveSessions.Remove(sessionId);
+                ActiveSessions.TryRemove(sessionId, out _);
             }
         }
 
