@@ -180,7 +180,9 @@ namespace Командное_управление_проектами.Helpers
                     p.Статус,
                     ISNULL(с.Фамилия + ' ' + с.Имя + ' ' + ISNULL(с.Отчество, ''), 'Не назначен') AS Ответственный,
                     p.ID_ответственного,
-                    ISNULL(SUM(b.Сумма), 0) AS Бюджет
+                    ISNULL(SUM(b.Сумма), 0) AS Бюджет,
+                    (SELECT COUNT(*) FROM Задачи WHERE ID_проекта = p.ID_проекта) AS ВсегоЗадач,
+                    (SELECT COUNT(*) FROM Задачи WHERE ID_проекта = p.ID_проекта AND Статус = 'Завершена') AS ЗавершенныхЗадач
                 FROM Проекты p
                 LEFT JOIN Сотрудники с ON p.ID_ответственного = с.ID_сотрудника
                 LEFT JOIN Бюджет b ON p.ID_проекта = b.ID_проекта
@@ -202,7 +204,9 @@ namespace Командное_управление_проектами.Helpers
                             Статус = reader.GetString(5),
                             Ответственный = reader.GetString(6),
                             ID_ответственного = reader.IsDBNull(7) ? (int?)null : reader.GetInt32(7),
-                            Бюджет = reader.GetDecimal(8)
+                            Бюджет = reader.GetDecimal(8),
+                            ВсегоЗадач = reader.GetInt32(9),
+                            ЗавершенныхЗадач = reader.GetInt32(10)
                         };
 
                         // Цветовая индикация статуса проекта

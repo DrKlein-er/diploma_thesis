@@ -19,6 +19,7 @@
     <SolidColorBrush x:Key="TaskBrush" Color="#FF9800"/>
     <SolidColorBrush x:Key="TextBrush" Color="#000000"/>
     <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#F0F0F0"/>
+    <SolidColorBrush x:Key="FilterCardBgBrush" Color="#F5F5F5"/>
 
     <!-- Стиль для кнопок меню -->
     <Style x:Key="MenuButtonStyle" TargetType="Button">

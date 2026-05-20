@@ -17,6 +17,8 @@
         <h:EventTypeToBrushConverter x:Key="EventTypeToBrush"/>
         <h:EventTypeToBackgroundBrushConverter x:Key="EventTypeToBgBrush"/>
         <h:StringToVisibilityConverter x:Key="StringToVisibility"/>
+        <h:StatusToBrushConverter x:Key="StatusToBrush"/>
+        <h:NotNullToBoolConverter x:Key="NotNullToBool"/>
         <converters:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
 
         <!-- Градиент для верхней панели - адаптируется к теме -->
@@ -390,6 +392,106 @@
             </Style.Triggers>
         </Style>
 
+        <!-- Стиль прогресс-бара задач проекта -->
+        <Style x:Key="StatusProgressBarStyle" TargetType="ProgressBar">
+            <Setter Property="Height" Value="8"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Grid>
+                            <Border x:Name="PART_Track"
+                                    Background="{TemplateBinding Background}"
+                                    CornerRadius="4"/>
+                            <Border x:Name="PART_Indicator"
+                                    Background="{TemplateBinding Foreground}"
+                                    CornerRadius="4"
+                                    HorizontalAlignment="Left"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Контурная кнопка (нейтральная) -->
+        <Style x:Key="OutlineButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource SecondaryBackgroundBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource HoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Контурная кнопка (красная, опасная операция) -->
+        <Style x:Key="OutlineDangerButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter x:Name="cp" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#E53935"/>
+                                <Setter Property="Foreground" Value="#E53935"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#FFEBEE"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#D32F2F"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Стиль тоггл-кнопок фильтра календаря -->
         <Style x:Key="CalendarFilterToggleStyle" TargetType="ToggleButton">
             <Setter Property="Background" Value="Transparent"/>
@@ -652,7 +754,11 @@
                         BorderThickness="1">
                     <StackPanel>
                         <!-- Фильтры -->
-                        <Grid Margin="0,0,0,15">
+                        <Border Background="{DynamicResource FilterCardBgBrush}"
+                                CornerRadius="6"
+                                Padding="16"
+                                Margin="0,0,0,15">
+                        <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="200"/>
@@ -713,40 +819,54 @@
                             </StackPanel>
 
                             <Button Grid.Column="6"
-                                    Content="Сброс фильтров" 
+                                    Content="Сброс фильтров"
                                     Click="ResetProjectFiltersBtn_Click"
                                     Style="{StaticResource ActionButtonStyle}"/>
                         </Grid>
+                        </Border>
 
                         <!-- Кнопки действий -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
-                            <Button x:Name="AddProjectBtn" 
-                                    Content="Добавить проект" 
-                                    Click="AddProject_Click" 
+                            <Button x:Name="AddProjectBtn"
+                                    Content="Добавить проект"
+                                    Click="AddProject_Click"
                                     Margin="0,0,10,0"
-                                    Style="{StaticResource AddButtonStyle}"/>
+                                    Style="{DynamicResource PrimaryButtonStyle}"/>
 
-                            <Button x:Name="EditProjectBtn" 
-                                    Content="Подробнее" 
-                                    Click="EditProject_Click" 
+                            <Button x:Name="EditProjectBtn"
+                                    Content="Подробнее"
+                                    Click="EditProject_Click"
                                     Margin="0,0,10,0"
-                                    Style="{StaticResource EditButtonStyle}"/>
+                                    IsEnabled="{Binding ElementName=ProjectsGrid, Path=SelectedItem, Converter={StaticResource NotNullToBool}}"
+                                    Style="{StaticResource OutlineButtonStyle}"/>
 
-                            <Button x:Name="DeleteProjectBtn" 
-                                    Content="Удалить" 
+                            <Button x:Name="DeleteProjectBtn"
+                                    Content="Удалить"
                                     Click="DeleteProject_Click"
-                                    Style="{StaticResource DeleteButtonStyle}"/>
+                                    IsEnabled="{Binding ElementName=ProjectsGrid, Path=SelectedItem, Converter={StaticResource NotNullToBool}}"
+                                    Style="{StaticResource OutlineDangerButtonStyle}"/>
                         </StackPanel>
 
                         <!-- Таблица проектов -->
-                        <DataGrid x:Name="ProjectsGrid" 
-                                  AutoGenerateColumns="False" 
-                                  IsReadOnly="True" 
+                        <DataGrid x:Name="ProjectsGrid"
+                                  AutoGenerateColumns="False"
+                                  IsReadOnly="True"
                                   Height="500"
-                                  SelectionMode="Single">
+                                  SelectionMode="Single"
+                                  CanUserSortColumns="True">
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Setter Property="MinHeight" Value="40"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource HoverBrush}"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.RowStyle>
 
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="ID" Binding="{Binding ID_проекта}" Width="50">
+                                <DataGridTextColumn Header="ID" Binding="{Binding ID_проекта}" Width="50" SortMemberPath="ID_проекта">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="HorizontalAlignment" Value="Center"/>
@@ -755,7 +875,7 @@
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
 
-                                <DataGridTextColumn Header="Название" Binding="{Binding Название_проекта}" Width="1.5*">
+                                <DataGridTextColumn Header="Название" Binding="{Binding Название_проекта}" Width="1.5*" SortMemberPath="Название_проекта">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="TextWrapping" Value="Wrap"/>
@@ -765,16 +885,7 @@
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
 
-                                <DataGridTextColumn Header="Описание" Binding="{Binding Описание}" Width="2*">
-                                    <DataGridTextColumn.ElementStyle>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="TextWrapping" Value="Wrap"/>
-                                            <Setter Property="Padding" Value="5"/>
-                                        </Style>
-                                    </DataGridTextColumn.ElementStyle>
-                                </DataGridTextColumn>
-
-                                <DataGridTextColumn Header="Начало" Binding="{Binding Дата_начала, StringFormat='dd.MM.yyyy'}" Width="100">
+                                <DataGridTextColumn Header="Начало" Binding="{Binding Дата_начала, StringFormat='dd.MM.yyyy'}" Width="100" SortMemberPath="Дата_начала">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="HorizontalAlignment" Value="Center"/>
@@ -782,7 +893,7 @@
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
 
-                                <DataGridTextColumn Header="Завершение" Binding="{Binding Дата_завершения, StringFormat='dd.MM.yyyy'}" Width="100">
+                                <DataGridTextColumn Header="Завершение" Binding="{Binding Дата_завершения, StringFormat='dd.MM.yyyy'}" Width="100" SortMemberPath="Дата_завершения">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="HorizontalAlignment" Value="Center"/>
@@ -790,23 +901,31 @@
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
 
-                                <DataGridTemplateColumn Header="Статус" Width="140">
+                                <DataGridTemplateColumn Header="Статус" Width="140" SortMemberPath="Статус">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <Border Background="{Binding StatusColor}"
-                                                    CornerRadius="12"
-                                                    Padding="8,4"
-                                                    Margin="5,2">
-                                                <TextBlock Text="{Binding Статус}"
-                                                           Foreground="White"
-                                                           FontWeight="SemiBold"
-                                                           HorizontalAlignment="Center"/>
+                                            <Border BorderBrush="{Binding Статус, Converter={StaticResource StatusToBrush}}"
+                                                    BorderThickness="1.5"
+                                                    CornerRadius="10"
+                                                    Padding="8,3"
+                                                    Margin="5,2"
+                                                    HorizontalAlignment="Left">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Ellipse Width="7" Height="7"
+                                                             Fill="{Binding Статус, Converter={StaticResource StatusToBrush}}"
+                                                             VerticalAlignment="Center"
+                                                             Margin="0,0,5,0"/>
+                                                    <TextBlock Text="{Binding Статус}"
+                                                               Foreground="{Binding Статус, Converter={StaticResource StatusToBrush}}"
+                                                               FontWeight="SemiBold"
+                                                               VerticalAlignment="Center"/>
+                                                </StackPanel>
                                             </Border>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
 
-                                <DataGridTextColumn Header="Ответственный" Binding="{Binding Ответственный}" Width="1.5*">
+                                <DataGridTextColumn Header="Ответственный" Binding="{Binding Ответственный}" Width="1.5*" SortMemberPath="Ответственный">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="TextWrapping" Value="Wrap"/>
@@ -815,7 +934,7 @@
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
 
-                                <DataGridTextColumn Header="Бюджет" Binding="{Binding Бюджет, StringFormat='N2'}" Width="120">
+                                <DataGridTextColumn Header="Бюджет" Binding="{Binding Бюджет, StringFormat='N2'}" Width="120" SortMemberPath="Бюджет">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="HorizontalAlignment" Value="Right"/>
@@ -824,6 +943,24 @@
                                         </Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
+
+                                <DataGridTemplateColumn Header="Прогресс" Width="150" SortMemberPath="Прогресс">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="5,2" VerticalAlignment="Center">
+                                                <ProgressBar Value="{Binding Прогресс, Mode=OneWay}"
+                                                             Maximum="100"
+                                                             Style="{StaticResource StatusProgressBarStyle}"
+                                                             Foreground="{Binding Статус, Converter={StaticResource StatusToBrush}}"
+                                                             Margin="0,0,0,3"/>
+                                                <TextBlock Text="{Binding Прогресс, StringFormat='{}{0:F0}%'}"
+                                                           FontSize="11"
+                                                           HorizontalAlignment="Right"
+                                                           Foreground="{DynamicResource ForegroundBrush}"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                             </DataGrid.Columns>
                         </DataGrid>
                     </StackPanel>

@@ -75,4 +75,50 @@ namespace Командное_управление_проектами.Helpers
             throw new NotImplementedException();
         }
     }
+
+    public class StatusToBrushConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            string status = value as string;
+            switch (status)
+            {
+                case "В работе":
+                case "В процессе":
+                    return new SolidColorBrush(Color.FromRgb(33, 150, 243));
+                case "Планируется":
+                    return new SolidColorBrush(Color.FromRgb(158, 158, 158));
+                case "Завершён":
+                case "Завершен":
+                    return new SolidColorBrush(Color.FromRgb(76, 175, 80));
+                case "Пауза":
+                case "Отложен":
+                case "Приостановлен":
+                    return new SolidColorBrush(Color.FromRgb(255, 152, 0));
+                case "Отменён":
+                case "Отменен":
+                    return new SolidColorBrush(Color.FromRgb(244, 67, 54));
+                default:
+                    return new SolidColorBrush(Color.FromRgb(158, 158, 158));
+            }
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public class NotNullToBoolConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            return value != null;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
 }
